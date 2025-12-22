@@ -11,6 +11,7 @@ export default function SmsModalCopy1({ userIds, onClose }) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
+  const [channels, setChannels] = useState(["sms"]);
 
   useEffect(() => {
     if (!brand) return;
@@ -37,6 +38,7 @@ export default function SmsModalCopy1({ userIds, onClose }) {
         userIds: Array.from(userIds),
         brand,
         message,
+        channels,
       });
       setResult(res);
     } catch (e) {
@@ -50,6 +52,18 @@ export default function SmsModalCopy1({ userIds, onClose }) {
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
       <div className="bg-white w-full max-w-lg rounded p-6 space-y-4">
         <h3 className="text-xl font-semibold">Send SMS ({userIds.size})</h3>
+        <select
+          multiple
+          className="w-full border px-3 py-2 rounded"
+          value={channels}
+          onChange={(e) =>
+            setChannels([...e.target.selectedOptions].map((o) => o.value))
+          }
+        >
+          <option value="sms">SMS</option>
+          <option value="whatsapp">WhatsApp</option>
+          <option value="email">Email</option>
+        </select>
 
         <select
           className="w-full border px-3 py-2 rounded"
