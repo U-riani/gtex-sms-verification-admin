@@ -4,8 +4,11 @@ import { getAdminUsers } from "../api/adminUserService";
 import Table from "../components/Table";
 import Pagination from "../components/Pagination";
 import SmsModalCopy1 from "../components/SmsModalCopy1";
+import { useScreenWidth } from "../hooks/useScreenWidth";
 
 export default function Users() {
+  const screenWidth = useScreenWidth();
+
   const navigate = useNavigate();
 
   const [users, setUsers] = useState([]);
@@ -86,19 +89,38 @@ export default function Users() {
   };
 
   const columns = [
-    { key: "firstName", label: "First name" },
-    { key: "lastName", label: "Last name" },
-    { key: "phone", label: "Phone" },
-    { key: "email", label: "Email" },
-    { key: "city", label: "City" },
+    { key: "firstName", label: "First name", sortable: true, filterable: true },
+    { key: "lastName", label: "Last name", sortable: true, filterable: true },
+    { key: "branch", label: "Branch", sortable: true, filterable: true },
+    { key: "gender", label: "Gender", sortable: true, filterable: true },
+    { key: "phone", label: "Phone", sortable: true, filterable: true },
+    { key: "email", label: "Email", sortable: true, filterable: true },
+    { key: "city", label: "City", sortable: true, filterable: true },
+    { key: "country", label: "Country", sortable: true, filterable: true },
+    {
+      key: "dateOfBirth",
+      label: "Date Of Birth",
+      sortable: true,
+      filterable: true,
+    },
+    {
+      key: "brands",
+      label: "Selected Brands",
+      sortable: true,
+      filterable: true,
+    },
     {
       key: "sms",
       label: "SMS",
+      sortable: true,
+      filterable: true,
       render: (u) => (u.promoChannels?.sms?.enabled ? "YES" : "NO"),
     },
     {
       key: "emailPromo",
       label: "Email",
+      sortable: true,
+      filterable: true,
       render: (u) => (u.promoChannels?.email?.enabled ? "YES" : "NO"),
     },
   ];
@@ -108,7 +130,7 @@ export default function Users() {
       <h2 className="text-2xl font-semibold">Users</h2>
 
       {/* FILTER ROW */}
-      <div className="grid grid-cols-7 gap-2 bg-white p-3 rounded shadow text-sm">
+      <div className="grid grid-cols-7 gap-2 bg-gray-400 p-3 rounded shadow text-sm">
         <input
           className="border px-2 py-1 rounded"
           placeholder="First"

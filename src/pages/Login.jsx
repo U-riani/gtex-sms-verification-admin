@@ -8,21 +8,18 @@ export default function Login() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
   const { login } = useAuth();
-console.log(email, password);
+  console.log(email, password);
 
   const submit = async (e) => {
     e.preventDefault();
     setError("");
 
     try {
-      const res = await fetch(
-        import.meta.env.VITE_API_URL + "/admin/login",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        }
-      );
+      const res = await fetch(import.meta.env.VITE_API_URL + "/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
