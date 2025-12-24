@@ -7,6 +7,12 @@ import TableHeadCell from "../components/TableHeadCell";
 import TableFilterDropdown from "../components/TableFilterDropdown";
 import { SORT_STATES } from "../constanst/sortStates";
 
+const normalizeToArray = (value) => {
+  if (Array.isArray(value)) return value.map(String);
+  if (value == null) return [];
+  return [String(value)];
+};
+
 export default function Table({
   columns,
   data,
@@ -34,19 +40,19 @@ export default function Table({
       if (key === columnKey) return;
 
       result = result.filter((row) => {
-        const value = row[key];
-        if (value == null) return false;
+        const values = normalizeToArray(row[key]);
+        if (!values.length) return false;
 
         if (filter.type === "text") {
-          return String(value)
-            .toLowerCase()
-            .includes(filter.value.toLowerCase());
+          return values.some((v) =>
+            v.toLowerCase().includes(filter.value.toLowerCase())
+          );
         }
 
         if (filter.type === "enum") {
           return (
             filter.values.length === 0 ||
-            filter.values.includes(String(value))
+            values.some((v) => filter.values.includes(v))
           );
         }
 
@@ -61,18 +67,20 @@ export default function Table({
 
   Object.entries(filters).forEach(([key, filter]) => {
     filteredData = filteredData.filter((row) => {
-      const value = row[key];
-      if (value == null) return false;
+      const values = normalizeToArray(row[key]);
+      if (!values.length) return false;
 
       if (
         filter.search &&
-        !String(value).toLowerCase().includes(filter.search.toLowerCase())
+        !values.some((v) =>
+          v.toLowerCase().includes(filter.search.toLowerCase())
+        )
       ) {
         return false;
       }
 
       if (filter.values?.length) {
-        return filter.values.includes(String(value));
+        return values.some((v) => filter.values.includes(v));
       }
 
       return true;
@@ -199,9 +207,7 @@ export default function Table({
                     <td key={col.key} className="px-4">
                       <div
                         className={
-                          row.brands.length > 4
-                            ? "min-w-[310px]"
-                            : "flex"
+                          row.brands.length > 4 ? "min-w-[310px]" : "flex"
                         }
                       >
                         {row.brands.map((el) => (

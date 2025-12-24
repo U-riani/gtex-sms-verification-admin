@@ -31,13 +31,21 @@ export default function AdvancedFilterBar({ filters, onChange, fields }) {
     onChange(next);
   };
 
+  const truncate = (v, len = 6) =>
+    String(v).length > len ? String(v).slice(0, len) + "…" : String(v);
+
   const formatValue = (f) => {
     if (f.type === "enum") {
       if (f.values.length === 0) return "any";
-      if (f.values.length <= 2) return f.values.join(", ");
-      return `${f.values.slice(0, 2).join(", ")} … ${f.values.length}`;
+
+      const truncated = f.values.map((v) => truncate(v));
+
+      if (truncated.length <= 2) return truncated.join(", ");
+
+      return `${truncated.slice(0, 2).join(", ")} … ${f.values.length}`;
     }
-    return f.value;
+
+    return truncate(f.value);
   };
 
   useEffect(() => {

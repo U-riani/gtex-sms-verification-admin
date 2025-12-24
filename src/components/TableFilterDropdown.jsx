@@ -12,10 +12,16 @@ export default function TableFilterDropdown({
   const [search, setSearch] = useState(value?.search || "");
   const [selected, setSelected] = useState([]);
 
-  const uniqueValues = useMemo(
-    () => [...new Set(data.map((r) => String(r[columnKey] ?? "")))],
-    [data, columnKey]
-  );
+  const uniqueValues = useMemo(() => {
+    const values = data.flatMap((r) => {
+      const v = r[columnKey];
+      if (Array.isArray(v)) return v.map(String);
+      if (v == null) return [];
+      return [String(v)];
+    });
+
+    return [...new Set(values)];
+  }, [data, columnKey]);
 
   const visibleValues = useMemo(() => {
     if (!search) return uniqueValues;
