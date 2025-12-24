@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faSort,
@@ -6,7 +7,6 @@ import {
   faFilter,
 } from "@fortawesome/free-solid-svg-icons";
 import { SORT_STATES } from "../constanst/sortStates";
-import { useRef } from "react";
 
 export default function TableHeadCell({
   label,
@@ -36,17 +36,13 @@ export default function TableHeadCell({
     <th
       ref={thRef}
       onClick={handleSort}
-      className={`
-        px-4 py-3 border-b uppercase text-xs tracking-wide text-nowrap
-        select-none
-        ${sortable ? "cursor-pointer hover:bg-slate-600/40" : ""}
-      `}
+      className={`px-4 py-3 border-b uppercase text-xs tracking-wide text-nowrap select-none ${
+        sortable ? "cursor-pointer hover:bg-slate-600/40" : ""
+      }`}
     >
       <div className="flex items-center gap-2">
-        {/* LABEL */}
         <span className="font-semibold text-gray-200">{label}</span>
 
-        {/* SORT ICON (visual only now) */}
         {sortable && (
           <span className="text-gray-400">
             {sortState === SORT_STATES.NONE && (
@@ -61,7 +57,6 @@ export default function TableHeadCell({
           </span>
         )}
 
-        {/* FILTER ICON — stops sort */}
         {filterable && (
           <button
             onClick={(e) => {

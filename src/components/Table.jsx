@@ -1,34 +1,60 @@
+import { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faPenToSquare } from "@fortawesome/free-solid-svg-icons";
+
 import { brandsWithColor } from "../data/brandsWIthColors";
 import TableHeadCell from "../components/TableHeadCell";
 import TableFilterDropdown from "../components/TableFilterDropdown";
-import { useState, useEffect } from "react";
 import { SORT_STATES } from "../constanst/sortStates";
 
 export default function Table({
   columns,
   data,
   onRowClick,
-
-  // 🔽 NEW (optional)
   selectable = false,
   selectedIds = new Set(),
   onToggleRow,
   onToggleAll,
+  onSetSelectedIds,
+  filters,
+  onFilterChange,
 }) {
-  const allSelected =
-    selectable &&
-    data.length > 0 &&
-    data.every((row) => selectedIds.has(row._id));
-
   const [sort, setSort] = useState({});
-  const [filters, setFilters] = useState({});
   const [activeFilter, setActiveFilter] = useState(null);
   const [filterPos, setFilterPos] = useState(null);
 
   const handleSort = (key, state) => {
     setSort(state === SORT_STATES.NONE ? {} : { [key]: state });
+  };
+
+  const getFilteredDataForColumn = (columnKey) => {
+    let result = [...data];
+
+    Object.entries(filters).forEach(([key, filter]) => {
+      if (key === columnKey) return;
+
+      result = result.filter((row) => {
+        const value = row[key];
+        if (value == null) return false;
+
+        if (filter.type === "text") {
+          return String(value)
+            .toLowerCase()
+            .includes(filter.value.toLowerCase());
+        }
+
+        if (filter.type === "enum") {
+          return (
+            filter.values.length === 0 ||
+            filter.values.includes(String(value))
+          );
+        }
+
+        return true;
+      });
+    });
+
+    return result;
   };
 
   let filteredData = [...data];
@@ -38,7 +64,6 @@ export default function Table({
       const value = row[key];
       if (value == null) return false;
 
-      // text search
       if (
         filter.search &&
         !String(value).toLowerCase().includes(filter.search.toLowerCase())
@@ -46,7 +71,6 @@ export default function Table({
         return false;
       }
 
-      // checkbox values
       if (filter.values?.length) {
         return filter.values.includes(String(value));
       }
@@ -56,6 +80,12 @@ export default function Table({
   });
 
   const sortedData = [...filteredData];
+  const visibleRowIds = sortedData.map((row) => row._id);
+
+  const allSelected =
+    selectable &&
+    visibleRowIds.length > 0 &&
+    visibleRowIds.every((id) => selectedIds.has(id));
 
   const [sortKey] = Object.keys(sort);
   const sortDir = sort[sortKey];
@@ -85,9 +115,9 @@ export default function Table({
   }, []);
 
   return (
-    <div className="overflow-auto bg-pink-400 rounded shadow-md ">
+    <div className="overflow-auto bg-pink-400 rounded shadow-md">
       <div className="w-[1px] max-h-[90vh]">
-        <table className="min-w-full text-sm table-fixed relative text-gray-300">
+        <table className="min-w-full text-sm table-fixed text-gray-300">
           <thead className="bg-slate-500 sticky top-0 z-10">
             <tr>
               {selectable && (
@@ -95,7 +125,17 @@ export default function Table({
                   <input
                     type="checkbox"
                     checked={allSelected}
-                    onChange={onToggleAll}
+                    onChange={() => {
+                      onSetSelectedIds((prev) => {
+                        const next = new Set(prev);
+                        if (allSelected) {
+                          visibleRowIds.forEach((id) => next.delete(id));
+                        } else {
+                          visibleRowIds.forEach((id) => next.add(id));
+                        }
+                        return next;
+                      });
+                    }}
                   />
                 </th>
               )}
@@ -116,28 +156,33 @@ export default function Table({
                 />
               ))}
 
-              <th className="px-4 py-3 border-b font-semibold uppercase text-xs text-center">
+              <th className="px-4 py-3 border-b text-xs text-center">
                 Actions
               </th>
             </tr>
           </thead>
+
           {activeFilter && filterPos && (
             <TableFilterDropdown
               columnKey={activeFilter}
-              data={data}
-              value={filters[activeFilter]}
+              data={getFilteredDataForColumn(activeFilter)}
               position={filterPos}
-              onChange={(filter) =>
-                setFilters((prev) => ({ ...prev, [activeFilter]: filter }))
+              value={
+                filters[activeFilter]?.type === "enum"
+                  ? { values: filters[activeFilter].values }
+                  : { search: filters[activeFilter]?.value }
               }
+              onChange={(payload) => {
+                onFilterChange?.(activeFilter, payload);
+                setActiveFilter(null);
+              }}
               onClose={() => setActiveFilter(null)}
             />
           )}
 
           <tbody className="divide-y bg-gray-800">
             {sortedData.map((row) => (
-              <tr key={row._id} className="hover:bg-gray-600 transition">
-                {/* ✅ CHECKBOX CELL */}
+              <tr key={row._id} className="hover:bg-gray-600">
                 {selectable && (
                   <td className="px-4 py-3 text-center">
                     <input
@@ -149,67 +194,47 @@ export default function Table({
                   </td>
                 )}
 
-                {columns.map((col) => {
-                  return col.key === "brands" ? (
-                    <td key={col.key} className="px-4  table-cell  wrap">
+                {columns.map((col) =>
+                  col.key === "brands" ? (
+                    <td key={col.key} className="px-4">
                       <div
-                        className={`${
-                          row.brands.length > 4 ? "min-w-[310px]" : "flex"
-                        }`}
+                        className={
+                          row.brands.length > 4
+                            ? "min-w-[310px]"
+                            : "flex"
+                        }
                       >
-                        {row.brands.map((el) => {
-                          return (
-                            <span
-                              key={el}
-                              className={`inline-flex items-center text-xs rounded
-                              whitespace-nowrap  text-nowrap mx-1 px-2 py-0.5 ${brandsWithColor[el]?.bg} ${brandsWithColor[el]?.text} `}
-                            >
-                              {el}
-                            </span>
-                          );
-                        })}
+                        {row.brands.map((el) => (
+                          <span
+                            key={el}
+                            className={`inline-flex items-center text-xs rounded mx-1 px-2 py-0.5 ${brandsWithColor[el]?.bg} ${brandsWithColor[el]?.text}`}
+                          >
+                            {el}
+                          </span>
+                        ))}
                       </div>
                     </td>
                   ) : (
                     <td key={col.key} className="px-4 py-3">
                       {col.render ? col.render(row) : row[col.key]}
                     </td>
-                  );
-                })}
+                  )
+                )}
 
-                {/* ACTION BUTTONS */}
                 <td className="px-4 py-3 flex justify-center gap-3 text-lg">
-                  <button
-                    className="text-slate-600 hover:text-blue-800 cursor-pointer"
-                    onClick={() => onRowClick(row)}
-                    title="View"
-                  >
+                  <button onClick={() => onRowClick(row)}>
                     <FontAwesomeIcon icon={faEye} />
                   </button>
-
                   <button
-                    className="text-slate-600 hover:text-blue-800 cursor-pointer"
                     onClick={() =>
                       (window.location.href = `/users/${row._id}/edit`)
                     }
-                    title="Edit"
                   >
                     <FontAwesomeIcon icon={faPenToSquare} />
                   </button>
                 </td>
               </tr>
             ))}
-
-            {data.length === 0 && (
-              <tr>
-                <td
-                  colSpan={columns.length + 1 + (selectable ? 1 : 0)}
-                  className="px-4 py-6 text-center text-gray-500"
-                >
-                  No users found.
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
       </div>
