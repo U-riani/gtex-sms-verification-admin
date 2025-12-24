@@ -8,9 +8,5 @@ export const OPERATORS = {
     { value: "ends_with", label: "ends with" },
     { value: "empty", label: "is empty" },
     { value: "not_empty", label: "is not empty" },
-  ],
-  enum: [
-    { value: "in", label: "is any of" },
-    { value: "not_in", label: "is none of" },
-  ],
+  ]
 };

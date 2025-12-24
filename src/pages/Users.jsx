@@ -150,19 +150,17 @@ export default function Users() {
             onFilterChange={(key, payload) => {
               setFilters((prev) => ({
                 ...prev,
-                [key]: payload.values
-                  ? { type: "enum", values: payload.values }
-                  : { type: "text", value: payload.search || "" },
+                [key]: {
+                  type: "enum",
+                  operator: payload.operator || "contains",
+                  values: payload.values || [],
+                },
               }));
               setPage(1);
             }}
           />
 
-          <Pagination
-            page={page}
-            totalPages={totalPages}
-            onChange={setPage}
-          />
+          <Pagination page={page} totalPages={totalPages} onChange={setPage} />
         </>
       )}
 

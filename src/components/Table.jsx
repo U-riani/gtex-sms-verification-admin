@@ -35,7 +35,7 @@ export default function Table({
 
   const getFilteredDataForColumn = (columnKey) => {
     let result = [...data];
-
+    console.log("++++", result);
     Object.entries(filters).forEach(([key, filter]) => {
       if (key === columnKey) return;
 
@@ -44,9 +44,10 @@ export default function Table({
         if (!values.length) return false;
 
         if (filter.type === "text") {
-          return values.some((v) =>
-            v.toLowerCase().includes(filter.value.toLowerCase())
-          );
+          const search = (filter.value || "").trim().toLowerCase();
+          if (!search) return true;
+
+          return values.some((v) => v.includes(search));
         }
 
         if (filter.type === "enum") {
@@ -67,19 +68,71 @@ export default function Table({
 
   Object.entries(filters).forEach(([key, filter]) => {
     filteredData = filteredData.filter((row) => {
-      const values = normalizeToArray(row[key]);
-      if (!values.length) return false;
+      const rawValues = normalizeToArray(row[key]);
 
-      if (
-        filter.search &&
-        !values.some((v) =>
-          v.toLowerCase().includes(filter.search.toLowerCase())
-        )
-      ) {
+      // No value in this column at all → usually exclude
+      if (rawValues.length === 0) {
+        // but "is empty" should pass, "is not empty" should fail
+        if (filter.type === "text") {
+          if (filter.operator === "empty") return true;
+          if (filter.operator === "not_empty") return false;
+        }
         return false;
       }
 
-      if (filter.values?.length) {
+      const values = rawValues.map((v) =>
+        String(v ?? "")
+          .trim()
+          .toLowerCase()
+      );
+
+      if (filter.type === "text") {
+        const search = (filter.value || "").trim().toLowerCase();
+
+        // Use the saved operator (or fallback to contains)
+        const operator = filter.operator || "contains";
+
+        if (operator === "empty") {
+          return values.length === 0 || values.every((v) => v === "");
+        }
+        if (operator === "not_empty") {
+          return values.some((v) => v !== "");
+        }
+
+        if (!search) return true;
+
+        switch (operator) {
+          case "contains":
+            return values.some((v) => v.includes(search));
+          case "not_contains":
+            return values.every((v) => !v.includes(search));
+          case "eq":
+          case "equals":
+            return values.some((v) => v === search);
+          case "neq":
+          case "not_equals":
+            return values.every((v) => v !== search);
+          case "starts_with":
+            return values.some((v) => v.startsWith(search));
+          case "ends_with":
+            return values.some((v) => v.endsWith(search));
+          default:
+            return true; // unknown operator → show
+        }
+      }
+
+      // Enum / multi-select filter
+      if (filter.type === "enum") {
+        if (!filter.values?.length) return true;
+
+        const operator = filter.operator || "contains";
+
+        if (operator === "not_contains") {
+          // row must NOT contain any selected value
+          return values.every((v) => !filter.values.includes(v));
+        }
+
+        // default = contains
         return values.some((v) => filter.values.includes(v));
       }
 
@@ -173,12 +226,19 @@ export default function Table({
           {activeFilter && filterPos && (
             <TableFilterDropdown
               columnKey={activeFilter}
+              columnType={filters[activeFilter]?.type ?? "text"} // ✅ ADD THIS
               data={getFilteredDataForColumn(activeFilter)}
               position={filterPos}
               value={
                 filters[activeFilter]?.type === "enum"
-                  ? { values: filters[activeFilter].values }
-                  : { search: filters[activeFilter]?.value }
+                  ? {
+                      values: filters[activeFilter].values,
+                      operator: filters[activeFilter].operator, // ✅ KEEP operator
+                    }
+                  : {
+                      search: filters[activeFilter]?.value,
+                      operator: filters[activeFilter]?.operator,
+                    }
               }
               onChange={(payload) => {
                 onFilterChange?.(activeFilter, payload);

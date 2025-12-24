@@ -1,8 +1,10 @@
 import { createPortal } from "react-dom";
 import { useMemo, useState, useEffect } from "react";
+import { OPERATORS } from "../constanst/operators";
 
 export default function TableFilterDropdown({
   columnKey,
+  columnType,
   data,
   value,
   onChange,
@@ -11,6 +13,7 @@ export default function TableFilterDropdown({
 }) {
   const [search, setSearch] = useState(value?.search || "");
   const [selected, setSelected] = useState([]);
+  const [operator, setOperator] = useState(value?.operator || "contains");
 
   const uniqueValues = useMemo(() => {
     const values = data.flatMap((r) => {
@@ -46,9 +49,18 @@ export default function TableFilterDropdown({
     );
   };
 
+  useEffect(() => {
+    if (value?.operator) setOperator(value.operator);
+  }, [value]);
+
   const apply = () => {
-    onChange({ search, values: selected });
-    onClose();
+    onChange({
+      type: "enum",
+      operator, // contains / not_contains
+      values: selected, // the checked items
+    });
+
+    onClose?.();
   };
 
   return createPortal(
@@ -57,11 +69,24 @@ export default function TableFilterDropdown({
       className="fixed z-50 w-56 bg-slate-800 border rounded p-2"
       onClick={(e) => e.stopPropagation()}
     >
+      <select
+        value={operator}
+        onChange={(e) => setOperator(e.target.value)}
+        className="w-full mb-2 px-2 py-1 rounded bg-slate-900 text-slate-100"
+      >
+        {OPERATORS.text.map((op) => (
+          <option key={op.value} value={op.value}>
+            {op.label}
+          </option>
+        ))}
+      </select>
+
       <input
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search..."
-        className="w-full mb-2 px-2 py-1 rounded bg-slate-900 text-slate-100"
+        disabled={operator === "empty" || operator === "not_empty"}
+        className="w-full mb-2 px-2 py-1 rounded bg-slate-900 text-slate-100 disabled:opacity-50"
       />
 
       <label className="flex gap-2 border-b border-slate-900 mb-1 pb-1">
