@@ -29,12 +29,34 @@ export default function SortableGroup({ group, index, filter, setFilter }) {
         <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 rounded-l-lg" />
 
         {/* Drag handle */}
-        <div
-          className="cursor-grab text-slate-300 text-xs font-semibold tracking-wide"
-          {...attributes}
-          {...listeners}
-        >
-          ☰ Group {index + 1}
+        <div className="flex items-center justify-between">
+          <div
+            className="cursor-grab text-slate-300 text-xs font-semibold tracking-wide"
+            {...attributes}
+            {...listeners}
+          >
+            ☰ Group {index + 1}
+          </div>
+
+          <button
+            disabled={filter.groups.length === 1}
+            onClick={() => {
+              if (filter.groups.length === 1) return;
+
+              if (!confirm("Delete this group?")) return;
+
+              const updated = structuredClone(filter);
+              updated.groups.splice(index, 1);
+              setFilter(updated);
+            }}
+            className={`text-xs px-2 py-1 rounded ${
+              filter.groups.length === 1
+                ? "opacity-40 cursor-not-allowed bg-slate-700"
+                : "bg-red-700 hover:bg-red-600 text-white"
+            }`}
+          >
+            Delete
+          </button>
         </div>
 
         <SortableContext

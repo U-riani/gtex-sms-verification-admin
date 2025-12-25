@@ -9,6 +9,7 @@ import { useScreenWidth } from "../hooks/useScreenWidth";
 import AdvancedFilterBar from "../components/AdvancedFilterBar";
 import AdvancedFilterModal from "../components/AdvancedFilterModal";
 import AdvancedFilterChips from "../components/AdvancedFilterChips";
+import { loadPresets, savePresets } from "../utils/filterPresets";
 
 export default function Users() {
   const FILTER_FIELDS = [
@@ -23,6 +24,8 @@ export default function Users() {
 
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [advancedFilter, setAdvancedFilter] = useState(null);
+  const [presets, setPresets] = useState(() => loadPresets());
+  const [selectedPresetId, setSelectedPresetId] = useState("");
 
   const screenWidth = useScreenWidth();
   const navigate = useNavigate();
@@ -40,10 +43,15 @@ export default function Users() {
 
   const hasAdvanced = !!advancedFilter;
   const hasFrontend = Object.keys(filters).length > 0;
+
   useEffect(() => {
     const t = setTimeout(() => setPage(1), 300);
     return () => clearTimeout(t);
   }, [filters]);
+
+  useEffect(() => {
+    savePresets(presets);
+  }, [presets]);
 
   // useEffect(() => {
   //   if (advancedFilter) setFilters({}); // optional UX decision
@@ -170,6 +178,63 @@ export default function Users() {
             >
               Advanced
             </button>
+            <div className="relative flex items-center gap-2">
+              <select
+                value={selectedPresetId}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setSelectedPresetId(id);
+
+                  const preset = presets.find((p) => p.id === id);
+                  if (!preset) return;
+
+                  setAdvancedFilter(structuredClone(preset.filter));
+                  setPage(1);
+                }}
+                className="bg-slate-700 text-white px-3 py-2 rounded"
+              >
+                <option value="">Presets…</option>
+                {presets.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+
+              {/* ACTIONS */}
+              {selectedPresetId && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => {
+                      const preset = presets.find(
+                        (p) => p.id === selectedPresetId
+                      );
+                      if (!preset) return;
+
+                      setAdvancedFilter(structuredClone(preset.filter));
+                      setAdvancedOpen(true);
+                    }}
+                    className="px-2 py-1 text-xs rounded bg-slate-600 text-white hover:bg-slate-500"
+                  >
+                    ✎ Edit
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      if (!confirm("Delete this preset?")) return;
+
+                      setPresets((prev) =>
+                        prev.filter((p) => p.id !== selectedPresetId)
+                      );
+                      setSelectedPresetId("");
+                    }}
+                    className="px-2 py-1 text-xs rounded bg-red-700 text-white hover:bg-red-600"
+                  >
+                    🗑 Delete
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* ACTIVE FILTER CHIPS */}
@@ -219,6 +284,27 @@ export default function Users() {
                   ✕ Clear
                 </button>
               </div>
+            )}
+            {advancedFilter && (
+              <button
+                onClick={() => {
+                  const name = prompt("Preset name");
+                  if (!name) return;
+
+                  setPresets((prev) => [
+                    ...prev,
+                    {
+                      id: crypto.randomUUID(),
+                      name,
+                      filter: structuredClone(advancedFilter),
+                      createdAt: new Date().toISOString(),
+                    },
+                  ]);
+                }}
+                className="px-3 py-2 rounded bg-indigo-600 text-white text-sm"
+              >
+                ★ Save preset
+              </button>
             )}
 
             {/* Frontend filter chips */}
