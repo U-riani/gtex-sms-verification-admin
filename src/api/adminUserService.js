@@ -16,3 +16,11 @@ export function updateAdminUser(id, payload) {
     body: JSON.stringify(payload),
   });
 }
+
+// Backend: POST /api/admin/users/paginated
+export function advancedFilterUsers(payload) {
+  return adminFetch(`/admin/users/advanced-search`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}

@@ -3,6 +3,7 @@ import { useState, useMemo, useEffect } from "react";
 export default function AdvancedFilterBar({ filters, onChange, fields }) {
   const [input, setInput] = useState("");
   const [open, setOpen] = useState(false);
+  const hasFilters = Object.keys(filters).length > 0;
 
   const suggestions = useMemo(() => {
     if (!input) return [];
@@ -83,23 +84,39 @@ export default function AdvancedFilterBar({ filters, onChange, fields }) {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {Object.entries(filters).map(([key, f]) => (
-          <div
-            key={key}
-            className="flex items-center gap-2 bg-blue-600 text-white px-2 py-1 rounded text-sm"
-          >
-            <span className="font-semibold">
-              {fields.find((x) => x.key === key)?.label ?? key}
-            </span>
-            <span className="opacity-90">({formatValue(f)})</span>
+        {/*clear */}
+        {hasFilters && (
+          <div className="flex items-center justify-between text-sm gap-1">
+            <span className="text-gray-300">Table filters</span>
             <button
-              onClick={() => removeFilter(key)}
-              className="hover:text-red-300"
+              onClick={() => onChange({})}
+              className="text-xs text-stone-100 bg-red-500 px-3 py-1.5 rounded hover:bg-red-600 cursor-pointer"
             >
-              ✕
+              Clear
             </button>
           </div>
-        ))}
+        )}
+
+        {/* Chips */}
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(filters).map(([key, f]) => (
+            <div
+              key={key}
+              className="flex items-center gap-2 bg-blue-600 text-white px-2 py-1 rounded text-sm"
+            >
+              <span className="font-semibold">
+                {fields.find((x) => x.key === key)?.label ?? key}
+              </span>
+              <span className="opacity-90">({formatValue(f)})</span>
+              <button
+                onClick={() => removeFilter(key)}
+                className="hover:text-red-300"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

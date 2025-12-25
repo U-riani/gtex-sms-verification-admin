@@ -121,19 +121,38 @@ export default function Table({
         }
       }
 
+      // // Enum / multi-select filter
+      // if (filter.type === "enum") {
+      //   if (!filter.values?.length) return true;
+
+      //   const operator = filter.operator || "contains";
+
+      //   if (operator === "not_contains") {
+      //     // row must NOT contain any selected value
+      //     return values.every((v) => !filter.values.includes(v));
+      //   }
+
+      //   // default = contains
+      //   return values.some((v) => filter.values.includes(v));
+      // }
+
       // Enum / multi-select filter
       if (filter.type === "enum") {
         if (!filter.values?.length) return true;
 
         const operator = filter.operator || "contains";
 
+        // 🔑 normalize selected values ONCE
+        const normalizedSelected = filter.values.map((v) =>
+          String(v).trim().toLowerCase()
+        );
+
         if (operator === "not_contains") {
-          // row must NOT contain any selected value
-          return values.every((v) => !filter.values.includes(v));
+          return values.every((v) => !normalizedSelected.includes(v));
         }
 
         // default = contains
-        return values.some((v) => filter.values.includes(v));
+        return values.some((v) => normalizedSelected.includes(v));
       }
 
       return true;

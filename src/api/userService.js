@@ -10,10 +10,10 @@ export function getUserById(id) {
   return apiFetch(`/users/${id}`);
 }
 
-// Backend: PATCH /api/users/:id
-export function updateUser(id, payload) {
-  return apiFetch(`/users/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
-}
+// //Backend: PATCH /api/users/:id
+// export function updateUser(id, payload) {
+//   return apiFetch(`/users/${id}`, {
+//     method: "PATCH",
+//     body: JSON.stringify(payload),
+//   });
+// }

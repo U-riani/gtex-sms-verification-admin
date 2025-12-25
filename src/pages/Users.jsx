@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { getAdminUsers } from "../api/adminUserService";
+import { getAdminUsers, advancedFilterUsers } from "../api/adminUserService";
 import Table from "../components/Table";
 import Pagination from "../components/Pagination";
 import SmsModalCopy1 from "../components/SmsModalCopy1";
 import { useScreenWidth } from "../hooks/useScreenWidth";
 import AdvancedFilterBar from "../components/AdvancedFilterBar";
+import AdvancedFilterModal from "../components/AdvancedFilterModal";
+import AdvancedFilterChips from "../components/AdvancedFilterChips";
 
 export default function Users() {
   const FILTER_FIELDS = [
@@ -18,6 +20,9 @@ export default function Users() {
     { key: "sms", label: "SMS", type: "boolean" },
     { key: "emailPromo", label: "Email", type: "boolean" },
   ];
+
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [advancedFilter, setAdvancedFilter] = useState(null);
 
   const screenWidth = useScreenWidth();
   const navigate = useNavigate();
@@ -33,10 +38,16 @@ export default function Users() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
+  const hasAdvanced = !!advancedFilter;
+  const hasFrontend = Object.keys(filters).length > 0;
   useEffect(() => {
     const t = setTimeout(() => setPage(1), 300);
     return () => clearTimeout(t);
   }, [filters]);
+
+  // useEffect(() => {
+  //   if (advancedFilter) setFilters({}); // optional UX decision
+  // }, [advancedFilter]);
 
   const query = new URLSearchParams(
     Object.entries(filters).flatMap(([key, f]) => {
@@ -53,9 +64,21 @@ export default function Users() {
       setError("");
 
       try {
-        const data = await getAdminUsers(page, 20, query ? `&${query}` : "");
-        setUsers(data.users || []);
-        setTotalPages(data.totalPages || 1);
+        if (advancedFilter) {
+          const data = await advancedFilterUsers({
+            filter: advancedFilter,
+            page,
+            limit: 20,
+          });
+
+          setUsers(data.users || []);
+          setTotalPages(data.totalPages || 1);
+        } else {
+          const data = await getAdminUsers(page, 20, query ? `&${query}` : "");
+
+          setUsers(data.users || []);
+          setTotalPages(data.totalPages || 1);
+        }
       } catch (err) {
         setError(err.message || "Failed to load users");
       } finally {
@@ -64,7 +87,7 @@ export default function Users() {
     }
 
     load();
-  }, [page, query]);
+  }, [page, query, advancedFilter]);
 
   const toggleRow = (id) => {
     setSelectedIds((prev) => {
@@ -128,6 +151,89 @@ export default function Users() {
           >
             Send SMS ({selectedIds.size})
           </button>
+          <div className="flex items-center gap-2">
+            {advancedOpen && (
+              <AdvancedFilterModal
+                onClose={() => setAdvancedOpen(false)}
+                onApply={(filter) => {
+                  console.log(filter);
+                  setAdvancedFilter(filter);
+                  setAdvancedOpen(false);
+                  setPage(1);
+                }}
+              />
+            )}
+
+            <button
+              onClick={() => setAdvancedOpen(true)}
+              className="px-3 py-2 rounded bg-slate-700 text-white text-sm hover:bg-slate-600"
+            >
+              Advanced
+            </button>
+          </div>
+
+          {/* ACTIVE FILTER CHIPS */}
+          <div className="flex flex-wrap gap-2">
+            {/* Advanced filter chips */}
+            {advancedFilter?.groups?.map((group, gi) =>
+              group.conditions.map((cond, ci) => (
+                <div
+                  key={`adv-${gi}-${ci}`}
+                  className="flex items-center gap-2 bg-purple-700 text-white px-2 py-1 rounded text-sm"
+                >
+                  <span>
+                    {cond.field} {cond.operator} {cond.value}
+                  </span>
+                  <button
+                    onClick={() => {
+                      const next = structuredClone(advancedFilter);
+                      next.groups[gi].conditions.splice(ci, 1);
+                      if (next.groups[gi].conditions.length === 0) {
+                        next.groups.splice(gi, 1);
+                      }
+                      setAdvancedFilter(next.groups.length ? next : null);
+                      setPage(1);
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))
+            )}
+            {advancedFilter && (
+              <button
+                onClick={() => {
+                  setAdvancedFilter(null);
+                  setPage(1);
+                }}
+                className="px-3 py-2 rounded bg-red-700 text-white text-sm"
+              >
+                Clear advanced
+              </button>
+            )}
+
+            {/* Frontend filter chips */}
+            {/* {Object.entries(filters).map(([key, f]) => (
+              <div
+                key={key}
+                className="flex items-center gap-2 bg-blue-600 text-white px-2 py-1 rounded text-sm"
+              >
+                <span>
+                  {key} {f.type === "enum" ? f.values.join(", ") : f.value}
+                </span>
+                <button
+                  onClick={() => {
+                    const next = { ...filters };
+                    delete next[key];
+                    setFilters(next);
+                    setPage(1);
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            ))} */}
+          </div>
 
           <AdvancedFilterBar
             filters={filters}
