@@ -17,36 +17,76 @@ export default function AdvancedFilterModal({ onApply, onClose }) {
         <h3 className="text-lg font-semibold text-white">Advanced Filters</h3>
 
         {filter.groups.map((group, gi) => (
-          <div key={gi} className="space-y-2">
-            {group.conditions.map((cond, ci) => (
-              <ConditionRow
-                key={ci}
-                condition={cond}
-                onChange={(next) => {
-                  const updated = [...filter.groups];
-                  updated[gi].conditions[ci] = next;
-                  setFilter({ ...filter, groups: updated });
-                }}
-                onRemove={() => {
-                  const updated = [...filter.groups];
-                  updated[gi].conditions.splice(ci, 1);
-                  setFilter({ ...filter, groups: updated });
-                }}
-              />
-            ))}
+          <div key={gi} className="space-y-3">
+            {/* 🔗 GROUP CONNECTOR (between groups) */}
+            {gi > 0 && (
+              <div className="flex justify-center items-center gap-2 text-sm text-slate-300">
+                <span>Connect groups with</span>
 
-            <button
-              onClick={() => {
-                const updated = [...filter.groups];
-                updated[gi].conditions.push({});
-                setFilter({ ...filter, groups: updated });
-              }}
-              className="text-sm text-blue-400"
-            >
-              + Add condition
-            </button>
+                <select
+                  value={filter.groups[gi - 1].logic}
+                  onChange={(e) => {
+                    const updated = structuredClone(filter);
+                    updated.groups[gi - 1].logic = e.target.value;
+                    setFilter(updated);
+                  }}
+                  className="bg-slate-700 text-white px-2 py-1 rounded"
+                >
+                  <option value="AND">AND</option>
+                  <option value="OR">OR</option>
+                </select>
+              </div>
+            )}
+
+            {/* 🧱 GROUP BOX (UNCHANGED INSIDE) */}
+            <div className="space-y-2 border border-slate-600 rounded p-3">
+              <div className="text-sm text-slate-300 font-semibold">
+                Group {gi + 1}
+              </div>
+
+              {group.conditions.map((cond, ci) => (
+                <ConditionRow
+                  key={ci}
+                  condition={cond}
+                  showLogic={ci < group.conditions.length - 1}
+                  onChange={(next) => {
+                    const updated = structuredClone(filter);
+                    updated.groups[gi].conditions[ci] = next;
+                    setFilter(updated);
+                  }}
+                  onRemove={() => {
+                    const updated = structuredClone(filter);
+                    updated.groups[gi].conditions.splice(ci, 1);
+                    setFilter(updated);
+                  }}
+                />
+              ))}
+
+              <button
+                onClick={() => {
+                  const updated = structuredClone(filter);
+                  updated.groups[gi].conditions.push({ logic: "AND" });
+                  setFilter(updated);
+                }}
+                className="text-sm text-blue-400"
+              >
+                + Add condition
+              </button>
+            </div>
           </div>
         ))}
+
+        <button
+          onClick={() => {
+            setFilter((prev) => ({
+              ...prev,
+              groups: [...prev.groups, { logic: "AND", conditions: [] }],
+            }));
+          }}
+          className="text-sm text-blue-400"
+        >
+          + Add group
+        </button>
 
         <div className="flex justify-end gap-2">
           <button
