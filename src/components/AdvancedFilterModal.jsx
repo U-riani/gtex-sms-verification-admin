@@ -1,86 +1,143 @@
 import { useState } from "react";
-import ConditionRow from "./AdvancedFilter/ConditionRow";
+import { nanoid } from "nanoid";
 
-export default function AdvancedFilterModal({ onApply, onClose }) {
-  const [filter, setFilter] = useState({
-    groups: [
-      {
-        logic: "AND",
-        conditions: [],
-      },
-    ],
-  });
+import { DndContext, closestCenter } from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+
+import SortableGroup from "./AdvancedFilter/SortableGroup";
+
+export default function AdvancedFilterModal({
+  initialFilter,
+  onApply,
+  onClose,
+}) {
+  const [filter, setFilter] = useState(
+    initialFilter
+      ? structuredClone(initialFilter)
+      : {
+          groups: [
+            {
+              id: nanoid(),
+              logic: "AND",
+              conditions: [],
+            },
+          ],
+        }
+  );
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
       <div className="bg-slate-800 w-[720px] rounded p-4 space-y-4">
         <h3 className="text-lg font-semibold text-white">Advanced Filters</h3>
 
-        {filter.groups.map((group, gi) => (
-          <div key={gi} className="space-y-3">
-            {/* 🔗 GROUP CONNECTOR (between groups) */}
-            {gi > 0 && (
-              <div className="flex justify-center items-center gap-2 text-sm text-slate-300">
-                <span>Connect groups with</span>
+        {/* 🧠 DRAG CONTEXT */}
+        <DndContext
+          collisionDetection={closestCenter}
+          onDragEnd={({ active, over }) => {
+            if (!over || active.id === over.id) return;
 
-                <select
-                  value={filter.groups[gi - 1].logic}
-                  onChange={(e) => {
-                    const updated = structuredClone(filter);
-                    updated.groups[gi - 1].logic = e.target.value;
-                    setFilter(updated);
-                  }}
-                  className="bg-slate-700 text-white px-2 py-1 rounded"
-                >
-                  <option value="AND">AND</option>
-                  <option value="OR">OR</option>
-                </select>
-              </div>
-            )}
+            const isGroup = filter.groups.some((g) => g.id === active.id);
 
-            {/* 🧱 GROUP BOX (UNCHANGED INSIDE) */}
-            <div className="space-y-2 border border-slate-600 rounded p-3">
-              <div className="text-sm text-slate-300 font-semibold">
-                Group {gi + 1}
-              </div>
+            if (isGroup) {
+              setFilter((prev) => {
+                const oldIndex = prev.groups.findIndex(
+                  (g) => g.id === active.id
+                );
+                const newIndex = prev.groups.findIndex((g) => g.id === over.id);
 
-              {group.conditions.map((cond, ci) => (
-                <ConditionRow
-                  key={ci}
-                  condition={cond}
-                  showLogic={ci < group.conditions.length - 1}
-                  onChange={(next) => {
-                    const updated = structuredClone(filter);
-                    updated.groups[gi].conditions[ci] = next;
-                    setFilter(updated);
-                  }}
-                  onRemove={() => {
-                    const updated = structuredClone(filter);
-                    updated.groups[gi].conditions.splice(ci, 1);
-                    setFilter(updated);
-                  }}
-                />
-              ))}
+                if (oldIndex === -1 || newIndex === -1) return prev;
 
-              <button
-                onClick={() => {
-                  const updated = structuredClone(filter);
-                  updated.groups[gi].conditions.push({ logic: "AND" });
-                  setFilter(updated);
-                }}
-                className="text-sm text-blue-400"
-              >
-                + Add condition
-              </button>
-            </div>
-          </div>
-        ))}
+                const groups = [...prev.groups];
+                const [moved] = groups.splice(oldIndex, 1);
+                groups.splice(newIndex, 0, moved);
 
+                return { ...prev, groups };
+              });
+              return;
+            }
+
+            if (!over || active.id === over.id) return;
+
+            setFilter((prev) => {
+              // 🔍 find source group & condition
+              let fromGroupIndex = -1;
+              let fromConditionIndex = -1;
+
+              prev.groups.forEach((g, gi) => {
+                const ci = g.conditions.findIndex((c) => c.id === active.id);
+                if (ci !== -1) {
+                  fromGroupIndex = gi;
+                  fromConditionIndex = ci;
+                }
+              });
+
+              // 🔍 find target group
+              let toGroupIndex = prev.groups.findIndex((g) => g.id === over.id);
+
+              // If dropped on another condition, find its group
+              if (toGroupIndex === -1) {
+                prev.groups.forEach((g, gi) => {
+                  if (g.conditions.some((c) => c.id === over.id)) {
+                    toGroupIndex = gi;
+                  }
+                });
+              }
+
+              // Not a condition drag → let group logic handle it
+              if (fromGroupIndex === -1 || toGroupIndex === -1) {
+                return prev;
+              }
+
+              const updated = structuredClone(prev);
+              const fromConditions = updated.groups[fromGroupIndex].conditions;
+              const toConditions = updated.groups[toGroupIndex].conditions;
+
+              const [moved] = fromConditions.splice(fromConditionIndex, 1);
+
+              // find target index
+              let toIndex = toConditions.findIndex((c) => c.id === over.id);
+              if (toIndex === -1) {
+                toIndex = toConditions.length;
+              }
+
+              toConditions.splice(toIndex, 0, moved);
+
+              return updated;
+            });
+          }}
+        >
+          <SortableContext
+            items={filter.groups.map((g) => g.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {filter.groups.map((group, gi) => (
+              <SortableGroup
+                key={group.id}
+                group={group}
+                index={gi}
+                filter={filter}
+                setFilter={setFilter}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
+
+        {/* ➕ ADD GROUP */}
         <button
           onClick={() => {
             setFilter((prev) => ({
               ...prev,
-              groups: [...prev.groups, { logic: "AND", conditions: [] }],
+              groups: [
+                ...prev.groups,
+                {
+                  id: nanoid(),
+                  logic: "AND",
+                  conditions: [],
+                },
+              ],
             }));
           }}
           className="text-sm text-blue-400"
@@ -88,6 +145,7 @@ export default function AdvancedFilterModal({ onApply, onClose }) {
           + Add group
         </button>
 
+        {/* ACTIONS */}
         <div className="flex justify-end gap-2">
           <button
             onClick={onClose}

@@ -154,9 +154,9 @@ export default function Users() {
           <div className="flex items-center gap-2">
             {advancedOpen && (
               <AdvancedFilterModal
+                initialFilter={advancedFilter}
                 onClose={() => setAdvancedOpen(false)}
                 onApply={(filter) => {
-                  console.log(filter);
                   setAdvancedFilter(filter);
                   setAdvancedOpen(false);
                   setPage(1);
@@ -201,15 +201,24 @@ export default function Users() {
               ))
             )}
             {advancedFilter && (
-              <button
-                onClick={() => {
-                  setAdvancedFilter(null);
-                  setPage(1);
-                }}
-                className="px-3 py-2 rounded bg-red-700 text-white text-sm"
-              >
-                Clear advanced
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setAdvancedOpen(true)}
+                  className="px-3 py-2 rounded bg-slate-600 text-white text-sm hover:bg-slate-500"
+                >
+                  ✎ Edit
+                </button>
+
+                <button
+                  onClick={() => {
+                    setAdvancedFilter(null);
+                    setPage(1);
+                  }}
+                  className="px-3 py-2 rounded bg-red-700 text-white text-sm hover:bg-red-600"
+                >
+                  ✕ Clear
+                </button>
+              </div>
             )}
 
             {/* Frontend filter chips */}
