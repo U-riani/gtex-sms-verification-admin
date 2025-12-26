@@ -101,20 +101,58 @@ export default function SortableGroup({ group, index, filter, setFilter }) {
       </div>
       {/* CONNECTOR TO NEXT GROUP */}
       {filter.groups[index + 1] && (
-        <div className="flex justify-center my-2">
-          <select
-            value={group.logic}
-            onChange={(e) => {
-              const updated = structuredClone(filter);
-              updated.groups[index].logic = e.target.value;
-              setFilter(updated);
-            }}
-            className="px-4 py-1 rounded-full bg-yellow-600/20 border border-yellow-500
-                 text-yellow-300 text-xs font-bold cursor-pointer"
-          >
-            <option value="AND">AND</option>
-            <option value="OR">OR</option>
-          </select>
+        <div className="flex justify-center my-2 bg-transparent">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-yellow-500/50 bg-transparent px-1 py-1 text-xs font-bold">
+            {/* AND option */}
+            <label className="flex items-center cursor-pointer group">
+              <input
+                type="radio"
+                name={`logic-${index}`}
+                value="AND"
+                checked={group.logic === "AND"}
+                onChange={(e) => {
+                  const updated = structuredClone(filter);
+                  updated.groups[index].logic = e.target.value;
+                  setFilter(updated);
+                }}
+                className="sr-only" // hide the default radio circle
+              />
+              <span
+                className={`px-3 py-0.5 rounded-full transition-colors ${
+                  group.logic === "AND"
+                    ? "bg-yellow-500/20 text-yellow-300 border border-yellow-500/40"
+                    : "text-yellow-400/60 hover:text-yellow-300 hover:bg-yellow-500/10"
+                }`}
+              >
+                AND
+              </span>
+            </label>
+
+            {/* OR option */}
+            <label className="flex items-center cursor-pointer group">
+              <input
+                type="radio"
+                name={`logic-${index}`}
+                value="OR"
+                checked={group.logic === "OR"}
+                onChange={(e) => {
+                  const updated = structuredClone(filter);
+                  updated.groups[index].logic = e.target.value;
+                  setFilter(updated);
+                }}
+                className="sr-only"
+              />
+              <span
+                className={`px-3 py-0.5 rounded-full transition-colors ${
+                  group.logic === "OR"
+                    ? "bg-yellow-500/20 text-yellow-300 border border-yellow-500/40"
+                    : "text-yellow-400/60 hover:text-yellow-300 hover:bg-yellow-500/10"
+                }`}
+              >
+                OR
+              </span>
+            </label>
+          </div>
         </div>
       )}
     </div>

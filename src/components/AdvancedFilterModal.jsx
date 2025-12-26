@@ -8,6 +8,10 @@ import {
 } from "@dnd-kit/sortable";
 
 import SortableGroup from "./AdvancedFilter/SortableGroup";
+// import {
+//   isFilterValid,
+//   sanitizeFilter,
+// } from "../utils/advancedFilterValidation";
 
 export default function AdvancedFilterModal({
   initialFilter,
@@ -27,11 +31,12 @@ export default function AdvancedFilterModal({
           ],
         }
   );
+  // const isValid = isFilterValid(filter);
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
       <div className="max-h-screen overflow-y-auto">
-        <div className="bg-slate-800 rounded p-4 space-y-4">
+        <div className="bg-slate-800 lg:w-[720px] rounded p-4 space-y-4">
           <h3 className="text-lg font-semibold text-white">Advanced Filters</h3>
 
           {/* 🧠 DRAG CONTEXT */}

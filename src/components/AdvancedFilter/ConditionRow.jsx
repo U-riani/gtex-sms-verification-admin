@@ -59,14 +59,53 @@ export default function ConditionRow({
         />
       )}
       {showLogic && (
-        <select
-          value={condition.logic || "AND"}
-          onChange={(e) => onChange({ ...condition, logic: e.target.value })}
-          className="bg-slate-700 text-white px-2 py-1 rounded text-xs"
-        >
-          <option value="AND">AND</option>
-          <option value="OR">OR</option>
-        </select>
+        <div className="inline-flex items-center gap-0.5 rounded-full border border-slate-600 bg-slate-800/50 px-1 py-0.5 text-xs">
+          <label className="flex items-center cursor-pointer">
+            <input
+              type="radio"
+              name={`logic-${condition.id}`} // use unique name per instance
+              value="AND"
+              checked={condition.logic === "AND"}
+              onChange={() => onChange({ ...condition, logic: "AND" })}
+              className="sr-only"
+            />
+            <span
+              className={`
+          px-3 py-1 rounded-full transition-colors
+          ${
+            condition.logic === "AND"
+              ? "bg-slate-600 text-white"
+              : "text-slate-400 hover:text-slate-200 hover:bg-slate-700/40"
+          }
+        `}
+            >
+              AND
+            </span>
+          </label>
+
+          <label className="flex items-center cursor-pointer">
+            <input
+              type="radio"
+              name={`logic-${condition.id}`}
+              value="OR"
+              checked={condition.logic === "OR"}
+              onChange={() => onChange({ ...condition, logic: "OR" })}
+              className="sr-only"
+            />
+            <span
+              className={`
+          px-3 py-1 rounded-full transition-colors
+          ${
+            condition.logic === "OR"
+              ? "bg-slate-600 text-white"
+              : "text-slate-400 hover:text-slate-200 hover:bg-slate-700/40"
+          }
+        `}
+            >
+              OR
+            </span>
+          </label>
+        </div>
       )}
 
       <button onClick={onRemove} className="text-red-400 hover:text-red-300">
