@@ -199,9 +199,9 @@ export default function Table({
       <div className="w-[1px] max-h-[90vh]">
         <table className="min-w-full text-sm table-fixed text-gray-300">
           <thead className="bg-slate-500 sticky top-0 z-10">
-            <tr>
+            <tr className="relative">
               {selectable && (
-                <th className="px-4 py-3 border-b text-center w-10">
+                <th className="sticky top-0 left-0 bg-slate-500 px-4 py-3 border-b text-center w-10">
                   <input
                     type="checkbox"
                     checked={allSelected}
@@ -269,9 +269,9 @@ export default function Table({
 
           <tbody className="divide-y bg-gray-800">
             {sortedData.map((row) => (
-              <tr key={row._id} className="hover:bg-gray-600">
+              <tr key={row._id} className="group hover:bg-gray-600">
                 {selectable && (
-                  <td className="px-4 py-3 text-center">
+                  <td className="sticky top-0 left-0 bg-gray-800/90 px-4 py-3 text-center group-hover:bg-gray-600/90">
                     <input
                       type="checkbox"
                       checked={selectedIds.has(row._id)}

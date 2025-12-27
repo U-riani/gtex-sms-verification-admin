@@ -144,7 +144,6 @@ export default function Users() {
 
   return (
     <div className="space-y-3">
-      <h2 className="text-2xl font-semibold">Users</h2>
 
       {error && <p className="text-red-600 text-sm">{error}</p>}
 

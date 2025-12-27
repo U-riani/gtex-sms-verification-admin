@@ -32,8 +32,9 @@ export const USER_ADVANCED_FILTER_FIELDS = [
   {
     key: "brands",
     label: "Brands",
-    type: "enum",
-    operators: ["contains_any", "contains_none"],
+    type: "array",
+    operators: ["contains", "not_contains", "in", "not_in"],
+    dynamicOptions: true,
   },
   {
     key: "promoChannels.sms.enabled",
