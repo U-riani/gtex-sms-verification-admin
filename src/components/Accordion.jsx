@@ -50,3 +50,109 @@ export function Accordion({ items, defaultOpenId }) {
     </div>
   );
 }
+
+
+// {advancedFilter?.groups?.flatMap((group, gi) => {
+//         const tokens = [];
+
+//         // (
+//         tokens.push(
+//           <span
+//             key={`open-${group.id}`}
+//             className="text-purple-300 font-mono font-bold"
+//           >
+//             [{" "}
+//           </span>
+//         );
+
+//         group.conditions.forEach((cond, ci) => {
+//           tokens.push(
+//             <Chip
+//               key={cond.id}
+//               color="purple"
+//               label={`${cond.field} ${cond.operator} ${truncate(
+//                 cond.value,
+//                 10
+//               )}`}
+//               title={`${cond.field} ${cond.operator} ${cond.value}`}
+//               onRemove={() => onRemoveAdvancedCondition(gi, ci)}
+//               onEdit={() => onEditAdvancedFilter(gi, ci)}
+//             />
+//           );
+
+//           if (ci < group.conditions.length - 1) {
+//             tokens.push(
+//               <span
+//                 key={`cond-logic-${cond.id}`}
+//                 className="text-purple-300 text-xs font-semibold"
+//               >
+//                 {cond.logic || "AND"}
+//               </span>
+//             );
+//           }
+//         });
+
+//         // )
+//         tokens.push(
+//           <span
+//             key={`close-${group.id}`}
+//             className="text-purple-300 font-mono font-bold"
+//           >
+//             ]
+//           </span>
+//         );
+
+//         // group logic (AND / OR) between groups
+//         if (gi < advancedFilter.groups.length - 1) {
+//           tokens.push(
+//             <span
+//               key={`group-logic-${group.id}`}
+//               className="text-pink-400 text-xs font-bold"
+//             >
+//               {group.logic}
+//             </span>
+//           );
+//         }
+
+//         return tokens;
+//       })}
+
+
+// function Chip({ label, onRemove, onEdit, color, title }) {
+//   const colors = {
+//     blue: "bg-blue-700",
+//     purple: "bg-purple-700",
+//     green: "bg-green-700",
+//     red: "bg-red-700",
+//   };
+
+//   return (
+//     <span
+//       title={title}
+//       className={`inline-flex items-center gap-2 text-white text-sm px-3 py-1 rounded ${colors[color]}`}
+//     >
+//       <span>{label}</span>
+
+//       {onEdit && (
+//         <button
+//           onClick={(e) => {
+//             e.stopPropagation();
+//             onEdit();
+//           }}
+//           className="text-xs opacity-80 hover:opacity-100"
+//           title="Edit"
+//         >
+//           ✎
+//         </button>
+//       )}
+
+//       <button
+//         onClick={onRemove}
+//         className="font-bold hover:opacity-70"
+//         title="Remove"
+//       >
+//         ✕
+//       </button>
+//     </span>
+//   );
+// }

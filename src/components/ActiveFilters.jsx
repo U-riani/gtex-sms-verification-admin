@@ -37,26 +37,53 @@ export default function ActiveFilters({
         />
       )}
 
-      {/* ADVANCED FILTERS */}
-      {advancedFilter?.groups?.map((group, gi) =>
-        group.conditions.map((cond, ci) => (
-          <Chip
-            key={`adv-${gi}-${ci}`}
-            color="purple"
-            label={`${cond.field} ${cond.operator} ${cond.value}`}
-            onRemove={() => onRemoveAdvancedCondition(gi, ci)}
-            onEdit={() => onEditAdvancedFilter(gi, ci)} // 👈 EDIT
-          />
-        ))
-      )}
+      {/* ADVANCED FILTERS (GROUPED CHIPS) */}
+      {advancedFilter?.groups?.map((group, gi) => {
+        const isLastGroup = gi === advancedFilter.groups.length - 1;
 
-      {advancedFilter && (
-        <Chip
-          color="red"
-          label="Clear advanced filters"
-          onRemove={onClearAdvancedFilter}
-        />
-      )}
+        return (
+          <div key={group.id ?? gi} className="flex items-center gap-2">
+            {/* GROUP CONTAINER */}
+            <div className="flex flex-wrap items-center gap-2 px-2 py-1 rounded border border-purple-500/30 bg-purple-900/10">
+              {group.conditions.map((cond, ci) => {
+                const isLastCond = ci === group.conditions.length - 1;
+
+                // connector between THIS condition and the NEXT one
+                const condLogic = cond.logic || "AND";
+
+                return (
+                  <div key={cond.id ?? ci} className="flex items-center gap-2">
+                    <Chip
+                      color="purple"
+                      label={`${cond.field} ${cond.operator} ${truncate(
+                        cond.value,
+                        10
+                      )}`}
+                      title={`${cond.field} ${cond.operator} ${cond.value}`}
+                      onRemove={() => onRemoveAdvancedCondition(gi, ci)}
+                      onEdit={() => onEditAdvancedFilter(gi, ci)}
+                    />
+
+                    {/* LOGIC BETWEEN CONDITIONS (use cond.logic, not group.logic) */}
+                    {!isLastCond && (
+                      <span className="text-purple-300 text-xs font-semibold">
+                        {condLogic}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* LOGIC BETWEEN GROUPS (use group.logic, not hardcoded OR) */}
+            {!isLastGroup && (
+              <span className="text-pink-400 text-xs font-bold mx-1">
+                {group.logic || "OR"}
+              </span>
+            )}
+          </div>
+        );
+      })}
 
       {/* COLUMN FILTERS */}
       {Object.entries(columnFilters).map(([key, f]) => {
