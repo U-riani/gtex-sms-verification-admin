@@ -1,4 +1,11 @@
 // src/components/ActiveFilters.jsx
+
+const truncate = (value, max = 5) => {
+  if (value == null) return "";
+  const str = String(value);
+  return str.length > max ? `${str.slice(0, max)}...` : str;
+};
+
 export default function ActiveFilters({
   quickSearch,
   onClearQuickSearch,
@@ -52,24 +59,32 @@ export default function ActiveFilters({
       )}
 
       {/* COLUMN FILTERS */}
-      {Object.entries(columnFilters).map(([key, f]) => (
-        <Chip
-          key={key}
-          color="green"
-          label={
-            f.type === "enum"
-              ? `${key}: ${f.values.join(", ")}`
-              : `${key}: ${f.value}`
-          }
-          onRemove={() => onRemoveColumnFilter(key)}
-          onEdit={() => onEditColumnFilter(key)} // 👈 ADD
-        />
-      ))}
+      {Object.entries(columnFilters).map(([key, f]) => {
+        const isEnum = f.type === "enum";
+        const values = isEnum ? f.values : [f.value].filter(Boolean);
+
+        const fullValue = values.join(", ");
+        const shortValue = truncate(values[0]);
+        const extraCount = values.length - 1;
+
+        return (
+          <Chip
+            key={key}
+            color="green"
+            label={`${key}: ${shortValue}${
+              extraCount > 0 ? ` +${extraCount}` : ""
+            }`}
+            title={`${key}: ${fullValue}`} // hover = full list
+            onRemove={() => onRemoveColumnFilter(key)}
+            onEdit={() => onEditColumnFilter(key)}
+          />
+        );
+      })}
     </div>
   );
 }
 
-function Chip({ label, onRemove, onEdit, color }) {
+function Chip({ label, onRemove, onEdit, color, title }) {
   const colors = {
     blue: "bg-blue-700",
     purple: "bg-purple-700",
@@ -79,6 +94,7 @@ function Chip({ label, onRemove, onEdit, color }) {
 
   return (
     <div
+      title={title}
       className={`flex items-center gap-2 text-white text-sm px-3 py-1 rounded ${colors[color]}`}
     >
       <span>{label}</span>

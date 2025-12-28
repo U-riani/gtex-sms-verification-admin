@@ -6,6 +6,7 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import PresetControls from "../components/PresetControls";
 
 import SortableGroup from "./AdvancedFilter/SortableGroup";
 // import {
@@ -17,6 +18,12 @@ export default function AdvancedFilterModal({
   initialFilter,
   onApply,
   onClose,
+
+  presets,
+  selectedPresetId,
+  onSavePreset,
+  onSelectPreset,
+  onDeletePreset,
 }) {
   const [filter, setFilter] = useState(
     initialFilter
@@ -31,13 +38,31 @@ export default function AdvancedFilterModal({
           ],
         }
   );
-  // const isValid = isFilterValid(filter);
+  const hasConditions = filter.groups.some((g) => g.conditions.length > 0);
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
       <div className="max-h-screen overflow-y-auto">
         <div className="bg-slate-800 lg:w-[720px] rounded p-4 space-y-4">
-          <h3 className="text-lg font-semibold text-white">Advanced Filters</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-white">
+              Advanced Filters
+            </h3>
+
+            <PresetControls
+              presets={presets}
+              selectedPresetId={selectedPresetId}
+              canSave={hasConditions}
+              onSavePreset={() => onSavePreset(filter)}
+              onSelectPreset={(id) => onSelectPreset(id, setFilter)}
+              onEditPreset={() => {
+                const preset = presets.find((p) => p.id === selectedPresetId);
+                if (!preset) return;
+                setFilter(structuredClone(preset.filter));
+              }}
+              onDeletePreset={onDeletePreset}
+            />
+          </div>
 
           {/* 🧠 DRAG CONTEXT */}
           <DndContext

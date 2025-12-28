@@ -14,14 +14,37 @@ import { Accordion } from "../components/Accordion";
 import { highlightMatch } from "../utils/highlightMatch";
 import ActiveFilters from "../components/ActiveFilters";
 
-function QuickSearch({ value, onChange }) {
+function SearchBar({ value, onChange, onClear, onAdvanced }) {
   return (
-    <input
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder="Search users…"
-      className="w-full px-4 py-2 rounded bg-slate-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-    />
+    <div className="relative flex items-center bg-slate-700 rounded px-3 py-2">
+      {/* Search input */}
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Search users…"
+        className="flex-1 bg-transparent text-white placeholder-gray-400 focus:outline-none pr-16"
+      />
+
+      {/* Clear (X) */}
+      {value && (
+        <button
+          onClick={onClear}
+          className="absolute right-10 text-gray-300 hover:text-white"
+          title="Clear search"
+        >
+          ✕
+        </button>
+      )}
+
+      {/* Advanced dropdown */}
+      <button
+        onClick={onAdvanced}
+        className="absolute right-3 text-gray-300 hover:text-white"
+        title="Advanced filters"
+      >
+        ⌄
+      </button>
+    </div>
   );
 }
 
@@ -63,6 +86,10 @@ export default function Users() {
 
   const [columnPositions, setColumnPositions] = useState({});
   const [openColumnFilter, setOpenColumnFilter] = useState(null);
+
+  const hasAdvancedConditions = advancedFilter?.groups?.some(
+    (g) => g.conditions.length > 0
+  );
 
   const removeAdvancedCondition = (gi, ci) => {
     const next = structuredClone(advancedFilter);
@@ -242,61 +269,6 @@ export default function Users() {
     },
   ];
 
-  const accordionItems = [
-    {
-      id: "filters",
-      header: <QuickSearch value={quickSearch} onChange={setQuickSearch} />,
-      content: (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setAdvancedOpen(true)}
-              className="px-3 py-2 rounded bg-slate-700 text-white text-sm hover:bg-slate-600"
-            >
-              Advanced
-            </button>
-
-            <select
-              value={selectedPresetId}
-              onChange={(e) => {
-                const id = e.target.value;
-                setSelectedPresetId(id);
-                const preset = presets.find((p) => p.id === id);
-                if (!preset) return;
-                setAdvancedFilter(structuredClone(preset.filter));
-                setPage(1);
-              }}
-              className="bg-slate-700 text-white px-3 py-2 rounded"
-            >
-              <option value="">Presets…</option>
-              {presets.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* <AdvancedFilterBar
-            filters={filters}
-            fields={FILTER_FIELDS}
-            onChange={(next) => {
-              setFilters(next);
-              setPage(1);
-            }}
-          /> */}
-
-          {/* <AdvancedFilterChips
-            advancedFilter={advancedFilter}
-            onRemove={(next) => {
-              setAdvancedFilter(next);
-              setPage(1);
-            }}
-          /> */}
-        </div>
-      ),
-    },
-  ];
   const searchableKeys = [
     "firstName",
     "lastName",
@@ -335,18 +307,17 @@ export default function Users() {
     <div className="space-y-3">
       {error && <p className="text-red-600 text-sm">{error}</p>}
 
-      <Accordion items={accordionItems} defaultOpenId="table" />
+      <SearchBar
+        value={quickSearch}
+        onChange={setQuickSearch}
+        onClear={clearQuickSearch}
+        onAdvanced={() => setAdvancedOpen(true)}
+      />
+
       {loading ? (
         <p className="text-gray-600">Loading…</p>
       ) : (
         <>
-          {/* <button
-            disabled={selectedIds.size === 0}
-            onClick={() => setShowSmsModal(true)}
-            className="bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50"
-          >
-            Send SMS ({selectedIds.size})
-          </button> */}
           <div className="flex items-center gap-2">
             {advancedOpen && (
               <AdvancedFilterModal
@@ -357,124 +328,9 @@ export default function Users() {
                   setAdvancedOpen(false);
                   setPage(1);
                 }}
-              />
-            )}
-
-            {/* <button
-              onClick={() => setAdvancedOpen(true)}
-              className="px-3 py-2 rounded bg-slate-700 text-white text-sm hover:bg-slate-600"
-            >
-              Advanced
-            </button>
-            <div className="relative flex items-center gap-2">
-              <select
-                value={selectedPresetId}
-                onChange={(e) => {
-                  const id = e.target.value;
-                  setSelectedPresetId(id);
-
-                  const preset = presets.find((p) => p.id === id);
-                  if (!preset) return;
-
-                  setAdvancedFilter(structuredClone(preset.filter));
-                  setPage(1);
-                }}
-                className="bg-slate-700 text-white px-3 py-2 rounded"
-              >
-                <option value="">Presets…</option>
-                {presets.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-
-              {selectedPresetId && (
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => {
-                      const preset = presets.find(
-                        (p) => p.id === selectedPresetId
-                      );
-                      if (!preset) return;
-
-                      setAdvancedFilter(structuredClone(preset.filter));
-                      setAdvancedOpen(true);
-                    }}
-                    className="px-2 py-1 text-xs rounded bg-slate-600 text-white hover:bg-slate-500"
-                  >
-                    ✎ Edit
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      if (!confirm("Delete this preset?")) return;
-
-                      setPresets((prev) =>
-                        prev.filter((p) => p.id !== selectedPresetId)
-                      );
-                      setSelectedPresetId("");
-                    }}
-                    className="px-2 py-1 text-xs rounded bg-red-700 text-white hover:bg-red-600"
-                  >
-                    🗑 Delete
-                  </button>
-                </div>
-              )}
-            </div> */}
-          </div>
-
-          {/* ACTIVE FILTER CHIPS */}
-          <div className="flex flex-wrap gap-2">
-            {/* Advanced filter chips */}
-            {/* {advancedFilter?.groups?.map((group, gi) =>
-              group.conditions.map((cond, ci) => (
-                <div
-                  key={`adv-${gi}-${ci}`}
-                  className="flex items-center gap-2 bg-purple-700 text-white px-2 py-1 rounded text-sm"
-                >
-                  <span>
-                    {cond.field} {cond.operator} {cond.value}
-                  </span>
-                  <button
-                    onClick={() => {
-                      const next = structuredClone(advancedFilter);
-                      next.groups[gi].conditions.splice(ci, 1);
-                      if (next.groups[gi].conditions.length === 0) {
-                        next.groups.splice(gi, 1);
-                      }
-                      setAdvancedFilter(next.groups.length ? next : null);
-                      setPage(1);
-                    }}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))
-            )} */}
-            {/* {advancedFilter && (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setAdvancedOpen(true)}
-                  className="px-3 py-2 rounded bg-slate-600 text-white text-sm hover:bg-slate-500"
-                >
-                  ✎ Edit
-                </button>
-
-                <button
-                  onClick={() => {
-                    setAdvancedFilter(null);
-                    setPage(1);
-                  }}
-                  className="px-3 py-2 rounded bg-red-700 text-white text-sm hover:bg-red-600"
-                >
-                  ✕ Clear
-                </button>
-              </div>
-            )} */}
-            {/* {advancedFilter && (
-              <button
-                onClick={() => {
+                presets={presets}
+                selectedPresetId={selectedPresetId}
+                onSavePreset={(filterToSave) => {
                   const name = prompt("Preset name");
                   if (!name) return;
 
@@ -483,48 +339,30 @@ export default function Users() {
                     {
                       id: crypto.randomUUID(),
                       name,
-                      filter: structuredClone(advancedFilter),
+                      filter: structuredClone(filterToSave),
                       createdAt: new Date().toISOString(),
                     },
                   ]);
                 }}
-                className="px-3 py-2 rounded bg-indigo-600 text-white text-sm"
-              >
-                ★ Save preset
-              </button>
-            )} */}
+                onSelectPreset={(id, setModalFilter) => {
+                  setSelectedPresetId(id);
+                  const preset = presets.find((p) => p.id === id);
+                  if (!preset) return;
 
-            {/* Frontend filter chips */}
-            {/* {Object.entries(filters).map(([key, f]) => (
-              <div
-                key={key}
-                className="flex items-center gap-2 bg-blue-600 text-white px-2 py-1 rounded text-sm"
-              >
-                <span>
-                  {key} {f.type === "enum" ? f.values.join(", ") : f.value}
-                </span>
-                <button
-                  onClick={() => {
-                    const next = { ...filters };
-                    delete next[key];
-                    setFilters(next);
-                    setPage(1);
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-            ))} */}
+                  setModalFilter(structuredClone(preset.filter));
+                }}
+                onDeletePreset={() => {
+                  if (!confirm("Delete this preset?")) return;
+
+                  setPresets((prev) =>
+                    prev.filter((p) => p.id !== selectedPresetId)
+                  );
+                  setSelectedPresetId("");
+                }}
+              />
+            )}
           </div>
 
-          {/* <AdvancedFilterBar
-            filters={filters}
-            fields={FILTER_FIELDS}
-            onChange={(next) => {
-              setFilters(next);
-              setPage(1);
-            }}
-          /> */}
           <ActiveFilters
             quickSearch={quickSearch}
             onClearQuickSearch={clearQuickSearch}
