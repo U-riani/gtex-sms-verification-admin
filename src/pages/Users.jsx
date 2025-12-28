@@ -255,6 +255,15 @@ export default function Users() {
         setColumnPositions((p) => ({ ...p, city: pos })),
     },
     {
+      key: "brands",
+      label: "Brands",
+      sortable: true,
+      filterable: true,
+      render: (u) => highlightMatch(u.brands, quickSearch),
+      onRegisterPosition: (pos) =>
+        setColumnPositions((p) => ({ ...p, brands: pos })),
+    },
+    {
       key: "sms",
       label: "SMS",
       sortable: true,
@@ -318,7 +327,6 @@ export default function Users() {
         <p className="text-gray-600">Loading…</p>
       ) : (
         <>
-          <div className="flex items-center gap-2">
             {advancedOpen && (
               <AdvancedFilterModal
                 initialFilter={advancedFilter}
@@ -361,7 +369,6 @@ export default function Users() {
                 }}
               />
             )}
-          </div>
 
           <ActiveFilters
             quickSearch={quickSearch}

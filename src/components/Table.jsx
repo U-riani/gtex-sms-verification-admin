@@ -234,7 +234,7 @@ export default function Table({
       const containerRect = container.getBoundingClientRect();
 
       container.scrollTo({
-        top: thRect.top - containerRect.top + container.scrollTop - 40,
+        
         left: thRect.left - containerRect.left + container.scrollLeft - 40,
         behavior: "smooth",
       });
@@ -248,8 +248,8 @@ export default function Table({
       ref={tableScrollRef}
       className="relative overflow-auto max-h-[90vh] bg-slate-400 rounded shadow-md"
     >
-      <div className="relative min-w-max">
-        <div className="bg-slate-500 sticky h-0.5 top-0 left-0 z-20 min-w-max">
+      <div className="relative min-w-full">
+        <div className="bg-slate-500 -mt-0.5 sticky h-0.5 -top-0.5 left-0 z-20 min-w-max">
           {activeFilter && (
             <TableFilterDropdown
               anchorKey={activeFilter}
@@ -277,8 +277,8 @@ export default function Table({
           )}
         </div>
 
-        <table className="min-w-max text-sm table-fixed text-gray-300">
-          <thead className="bg-slate-500 sticky top-0.5 z-10">
+        <table className="min-w-full text-sm table-fixed text-gray-300">
+          <thead className="bg-slate-500 sticky top-0 z-10">
             <tr className="relative">
               {selectable && (
                 <th className="sticky top-0 left-0 bg-slate-500 px-4 py-3 border-b text-center w-10">
