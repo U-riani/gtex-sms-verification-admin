@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faSort,
@@ -9,6 +9,7 @@ import {
 import { SORT_STATES } from "../constanst/sortStates";
 
 export default function TableHeadCell({
+  columnKey,
   label,
   sortable = false,
   filterable = false,
@@ -35,6 +36,7 @@ export default function TableHeadCell({
   return (
     <th
       ref={thRef}
+      data-col={columnKey}
       onClick={handleSort}
       className={`px-4 py-3 border-b uppercase text-xs tracking-wide text-nowrap select-none ${
         sortable ? "cursor-pointer hover:bg-slate-600/40" : ""
@@ -59,13 +61,10 @@ export default function TableHeadCell({
 
         {filterable && (
           <button
+            data-filter-btn
             onClick={(e) => {
               e.stopPropagation();
-              const rect = thRef.current.getBoundingClientRect();
-              onFilter?.({
-                top: rect.bottom + 4,
-                left: rect.left,
-              });
+              onFilter?.();
             }}
           >
             <FontAwesomeIcon icon={faFilter} />

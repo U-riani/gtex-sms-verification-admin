@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faPenToSquare } from "@fortawesome/free-solid-svg-icons";
 
@@ -24,10 +24,13 @@ export default function Table({
   onSetSelectedIds,
   filters,
   onFilterChange,
+  openFilterRequest,
+  onFilterOpened,
 }) {
   const [sort, setSort] = useState({});
   const [activeFilter, setActiveFilter] = useState(null);
-  const [filterPos, setFilterPos] = useState(null);
+
+  const tableScrollRef = useRef(null);
 
   const handleSort = (key, state) => {
     setSort(state === SORT_STATES.NONE ? {} : { [key]: state });
@@ -189,16 +192,93 @@ export default function Table({
   }
 
   useEffect(() => {
-    const close = () => setActiveFilter(null);
-    window.addEventListener("click", close);
-    return () => window.removeEventListener("click", close);
+    const close = (e) => {
+      if (e.target.closest(".table-filter-dropdown")) return;
+      if (e.target.closest("[data-filter-btn]")) return;
+
+      setActiveFilter(null);
+    };
+
+    window.addEventListener("click", close, true);
+    return () => window.removeEventListener("click", close, true);
   }, []);
 
+  // useEffect(() => {
+  //   if (!openFilterRequest) return;
+
+  //   const { key, position } = openFilterRequest;
+
+  //   setActiveFilter(key);
+  //   setFilterPos(position);
+
+  //   onFilterOpened?.();
+  // }, [openFilterRequest]);
+
+  useEffect(() => {
+    if (!openFilterRequest) return;
+
+    requestAnimationFrame(() => {
+      setActiveFilter(openFilterRequest.key);
+    });
+
+    requestAnimationFrame(() => {
+      const th = document.querySelector(
+        `th[data-col="${openFilterRequest.key}"]`
+      );
+      const container = tableScrollRef.current;
+      if (!th || !container) return;
+
+      // container.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+      const thRect = th.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+
+      container.scrollTo({
+        top: thRect.top - containerRect.top + container.scrollTop - 40,
+        left: thRect.left - containerRect.left + container.scrollLeft - 40,
+        behavior: "smooth",
+      });
+    });
+
+    onFilterOpened?.();
+  }, [openFilterRequest]);
+
   return (
-    <div className="overflow-auto bg-pink-400 rounded shadow-md">
-      <div className="w-[1px] max-h-[90vh]">
-        <table className="min-w-full text-sm table-fixed text-gray-300">
-          <thead className="bg-slate-500 sticky top-0 z-10">
+    <div
+      ref={tableScrollRef}
+      className="relative overflow-auto max-h-[90vh] bg-slate-400 rounded shadow-md"
+    >
+      <div className="relative min-w-max">
+        <div className="bg-slate-500 sticky h-0.5 top-0 left-0 z-20 min-w-max">
+          {activeFilter && (
+            <TableFilterDropdown
+              anchorKey={activeFilter}
+              containerRef={tableScrollRef}
+              columnKey={activeFilter}
+              columnType={filters[activeFilter]?.type ?? "text"} // ✅ ADD THIS
+              data={getFilteredDataForColumn(activeFilter)}
+              value={
+                filters[activeFilter]?.type === "enum"
+                  ? {
+                      values: filters[activeFilter].values,
+                      operator: filters[activeFilter].operator, // ✅ KEEP operator
+                    }
+                  : {
+                      search: filters[activeFilter]?.value,
+                      operator: filters[activeFilter]?.operator,
+                    }
+              }
+              onChange={(payload) => {
+                onFilterChange?.(activeFilter, payload);
+                setActiveFilter(null);
+              }}
+              onClose={() => setActiveFilter(null)}
+            />
+          )}
+        </div>
+
+        <table className="min-w-max text-sm table-fixed text-gray-300">
+          <thead className="bg-slate-500 sticky top-0.5 z-10">
             <tr className="relative">
               {selectable && (
                 <th className="sticky top-0 left-0 bg-slate-500 px-4 py-3 border-b text-center w-10">
@@ -223,14 +303,16 @@ export default function Table({
               {columns.map((col) => (
                 <TableHeadCell
                   key={col.key}
+                  columnKey={col.key}
                   label={col.label}
                   sortable={col.sortable}
                   filterable={col.filterable}
                   sortState={sort[col.key] || SORT_STATES.NONE}
                   onSort={(state) => handleSort(col.key, state)}
-                  onFilter={(pos) => {
-                    setActiveFilter(col.key);
-                    setFilterPos(pos);
+                  onFilter={() => {
+                    setActiveFilter((prev) =>
+                      prev === col.key ? null : col.key
+                    );
                   }}
                   filterActive={!!filters[col.key]}
                 />
@@ -241,31 +323,6 @@ export default function Table({
               </th>
             </tr>
           </thead>
-
-          {activeFilter && filterPos && (
-            <TableFilterDropdown
-              columnKey={activeFilter}
-              columnType={filters[activeFilter]?.type ?? "text"} // ✅ ADD THIS
-              data={getFilteredDataForColumn(activeFilter)}
-              position={filterPos}
-              value={
-                filters[activeFilter]?.type === "enum"
-                  ? {
-                      values: filters[activeFilter].values,
-                      operator: filters[activeFilter].operator, // ✅ KEEP operator
-                    }
-                  : {
-                      search: filters[activeFilter]?.value,
-                      operator: filters[activeFilter]?.operator,
-                    }
-              }
-              onChange={(payload) => {
-                onFilterChange?.(activeFilter, payload);
-                setActiveFilter(null);
-              }}
-              onClose={() => setActiveFilter(null)}
-            />
-          )}
 
           <tbody className="divide-y bg-gray-800">
             {sortedData.map((row) => (

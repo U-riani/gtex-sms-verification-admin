@@ -15,23 +15,24 @@ export function Accordion({ items, defaultOpenId }) {
             className="rounded-lg border border-slate-700 bg-slate-800 overflow-hidden"
           >
             {/* HEADER */}
-            <button
-              onClick={() => setOpenId(open ? null : item.id)}
-              className="w-full flex items-center justify-between px-4 py-3 text-left text-gray-200 hover:bg-slate-700 transition"
-            >
-              <div className="flex items-center gap-2">
-                {item.icon && <span className="text-lg">{item.icon}</span>}
-                <span className="font-medium">{item.title}</span>
+            <div className="flex items-center justify-between px-4 py-3 hover:bg-slate-700 transition">
+              <div className="flex-1">
+                {item.header}
               </div>
 
-              <span
-                className={`transition-transform ${
-                  open ? "rotate-180" : ""
-                }`}
+              <button
+                onClick={() => setOpenId(open ? null : item.id)}
+                className="ml-3 text-gray-300 hover:text-white transition"
               >
-                ▾
-              </span>
-            </button>
+                <span
+                  className={`transition-transform ${
+                    open ? "rotate-180" : ""
+                  }`}
+                >
+                  ▾
+                </span>
+              </button>
+            </div>
 
             {/* CONTENT */}
             <div

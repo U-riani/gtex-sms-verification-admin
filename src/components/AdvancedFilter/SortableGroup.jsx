@@ -65,6 +65,7 @@ export default function SortableGroup({ group, index, filter, setFilter }) {
         >
           {group.conditions.map((cond, ci) => (
             <SortableCondition
+              data-adv-cond={`${index}-${ci}`}
               key={cond.id}
               condition={cond}
               showLogic={ci < group.conditions.length - 1}
