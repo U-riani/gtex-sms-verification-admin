@@ -23,10 +23,10 @@ export default function Layout({ children }) {
     <div className="h-screen flex bg-gray-100 overflow-hidden">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex flex-col w-full h-screen">
+      <div className="flex flex-col flex-1 min-w-0 h-screen">
         <Navbar onMenuClick={toggleSidebar} sidebarOpen={sidebarOpen} />
 
-        <main className="p-6 h-full w-full overflow-x-hidden bg-gray-600">
+        <main className={`p-6 h-full  overflow-x-hidden bg-gray-600 `}>
           {children}
         </main>
       </div>

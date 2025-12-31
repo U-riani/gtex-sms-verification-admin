@@ -249,7 +249,7 @@ export default function Table({
       className="relative overflow-auto max-h-[90vh] bg-slate-400 rounded shadow-md"
     >
       <div className="relative min-w-full">
-        <div className="bg-slate-500 -mt-0.5 sticky h-0.5 -top-0.5 left-0 z-20 min-w-max">
+        <div className="bg-slate-500 -mt-0.5 sticky h-0.5 -top-0.5 left-0 z-20 ">
           {activeFilter && (
             <TableFilterDropdown
               anchorKey={activeFilter}

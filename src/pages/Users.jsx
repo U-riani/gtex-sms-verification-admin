@@ -312,6 +312,17 @@ export default function Users() {
     }, 50);
   };
 
+  const removeAdvancedGroup = (gi) => {
+    setAdvancedFilter((prev) => {
+      if (!prev) return null;
+
+      const next = structuredClone(prev);
+      next.groups.splice(gi, 1);
+
+      return next.groups.length ? next : null;
+    });
+  };
+
   return (
     <div className="space-y-3">
       {error && <p className="text-red-600 text-sm">{error}</p>}
@@ -327,48 +338,48 @@ export default function Users() {
         <p className="text-gray-600">Loading…</p>
       ) : (
         <>
-            {advancedOpen && (
-              <AdvancedFilterModal
-                initialFilter={advancedFilter}
-                onClose={() => setAdvancedOpen(false)}
-                onApply={(filter) => {
-                  setAdvancedFilter(filter);
-                  setAdvancedOpen(false);
-                  setPage(1);
-                }}
-                presets={presets}
-                selectedPresetId={selectedPresetId}
-                onSavePreset={(filterToSave) => {
-                  const name = prompt("Preset name");
-                  if (!name) return;
+          {advancedOpen && (
+            <AdvancedFilterModal
+              initialFilter={advancedFilter}
+              onClose={() => setAdvancedOpen(false)}
+              onApply={(filter) => {
+                setAdvancedFilter(filter);
+                setAdvancedOpen(false);
+                setPage(1);
+              }}
+              presets={presets}
+              selectedPresetId={selectedPresetId}
+              onSavePreset={(filterToSave) => {
+                const name = prompt("Preset name");
+                if (!name) return;
 
-                  setPresets((prev) => [
-                    ...prev,
-                    {
-                      id: crypto.randomUUID(),
-                      name,
-                      filter: structuredClone(filterToSave),
-                      createdAt: new Date().toISOString(),
-                    },
-                  ]);
-                }}
-                onSelectPreset={(id, setModalFilter) => {
-                  setSelectedPresetId(id);
-                  const preset = presets.find((p) => p.id === id);
-                  if (!preset) return;
+                setPresets((prev) => [
+                  ...prev,
+                  {
+                    id: crypto.randomUUID(),
+                    name,
+                    filter: structuredClone(filterToSave),
+                    createdAt: new Date().toISOString(),
+                  },
+                ]);
+              }}
+              onSelectPreset={(id, setModalFilter) => {
+                setSelectedPresetId(id);
+                const preset = presets.find((p) => p.id === id);
+                if (!preset) return;
 
-                  setModalFilter(structuredClone(preset.filter));
-                }}
-                onDeletePreset={() => {
-                  if (!confirm("Delete this preset?")) return;
+                setModalFilter(structuredClone(preset.filter));
+              }}
+              onDeletePreset={() => {
+                if (!confirm("Delete this preset?")) return;
 
-                  setPresets((prev) =>
-                    prev.filter((p) => p.id !== selectedPresetId)
-                  );
-                  setSelectedPresetId("");
-                }}
-              />
-            )}
+                setPresets((prev) =>
+                  prev.filter((p) => p.id !== selectedPresetId)
+                );
+                setSelectedPresetId("");
+              }}
+            />
+          )}
 
           <ActiveFilters
             quickSearch={quickSearch}
@@ -380,6 +391,7 @@ export default function Users() {
             columnFilters={filters}
             onRemoveColumnFilter={removeColumnFilter}
             onEditColumnFilter={editColumnFilter}
+            onRemoveAdvancedGroup={removeAdvancedGroup}
           />
 
           <Table
