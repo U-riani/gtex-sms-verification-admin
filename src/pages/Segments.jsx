@@ -17,6 +17,10 @@ export default function Segments() {
   const location = useLocation();
   const qc = useQueryClient();
 
+  useEffect(() => {
+    qc.invalidateQueries({ queryKey: ["segments"] });
+  }, []);
+  
   const fromSelection =
     new URLSearchParams(location.search).get("from") === "selection";
 

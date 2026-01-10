@@ -5,13 +5,11 @@ export const useUndoStore = create((set, get) => ({
   snackbar: null,
   timeoutId: null,
 
-  showUndo({ message, undo, commit, duration = 5000 }) {
-    // clear previous snackbar
+  showUndo({ message, undo, duration = 5000 }) {
     const prevTimeout = get().timeoutId;
     if (prevTimeout) clearTimeout(prevTimeout);
 
     const timeoutId = setTimeout(() => {
-      commit?.();
       set({ snackbar: null, timeoutId: null });
     }, duration);
 

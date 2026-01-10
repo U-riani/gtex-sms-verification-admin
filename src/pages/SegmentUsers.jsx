@@ -12,6 +12,7 @@ import {
   removeUserFromSegment,
   addUsersToSegment,
   getSegments,
+  undoRemoveUserFromSegment,
 } from "../api/segmentService";
 
 export default function SegmentUsers() {
@@ -152,19 +153,22 @@ export default function SegmentUsers() {
       total: old.total - userIds.length,
     }));
 
+    const responses = await Promise.all(
+      userIds.map((uid) =>
+        removeUserFromSegment({ segmentId: id, userId: uid })
+      )
+    );
+
+    const tokens = responses.map((r) => r.deleteToken);
+
     showUndo({
-      message:
-        userIds.length === 1
-          ? "User removed"
-          : `${userIds.length} users removed`,
-      undo: () => qc.setQueryData(["segment-users", id, page], prevData),
-      commit: async () => {
+      message: `${tokens.length} users removed`,
+      undo: async () => {
         await Promise.all(
-          userIds.map((uid) =>
-            removeUserFromSegment({ segmentId: id, userId: uid })
-          )
+          tokens.map((t) => undoRemoveUserFromSegment({ deleteToken: t }))
         );
         qc.invalidateQueries(["segment-users", id]);
+        qc.invalidateQueries(["segments"]);
       },
     });
 
@@ -172,22 +176,31 @@ export default function SegmentUsers() {
     setLocalBusy(false);
   };
 
-  const removeOneWithUndo = (user) => {
-    const prev = qc.getQueryData(["segment-users", id, page]);
-
+  const removeOneWithUndo = async (row) => {
+    // optimistic UI
     qc.setQueryData(["segment-users", id, page], (old) => ({
       ...old,
-      users: old.users.filter((u) => u._id !== user._id),
+      users: old.users.filter((u) => u._id !== row._id),
       total: old.total - 1,
     }));
 
+    qc.invalidateQueries(["segments"]);
+
+    const res = await removeUserFromSegment({
+      segmentId: id,
+      userId: row._id,
+    });
+
     showUndo({
-      message: `User removed`,
-      undo: () => qc.setQueryData(["segment-users", id, page], prev),
-      commit: () => removeUserFromSegment({ segmentId: id, userId: user._id }),
+      message: "User removed",
+      undo: async () => {
+        await undoRemoveUserFromSegment({ deleteToken: res.deleteToken });
+        qc.invalidateQueries(["segment-users", id]);
+        qc.invalidateQueries(["segments"]);
+      },
     });
   };
-  
+
   const isBusy = localBusy || addMut.isLoading;
 
   const submitAction = async () => {
@@ -202,6 +215,8 @@ export default function SegmentUsers() {
         segmentId: targetSegmentId,
         userIds,
       });
+
+      qc.invalidateQueries(["segments"]);
 
       if (action === "move") {
         // optimistic remove from current segment
@@ -221,6 +236,7 @@ export default function SegmentUsers() {
             removeUserFromSegment({ segmentId: id, userId: uid })
           )
         );
+        qc.invalidateQueries(["segments"]);
       }
     }
 
