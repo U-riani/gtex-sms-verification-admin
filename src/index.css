@@ -26,3 +26,7 @@
   background: #1e293b
 ; 
 }
+
+.row-fade {
+  transition: opacity 120ms ease, transform 120ms ease;
+}

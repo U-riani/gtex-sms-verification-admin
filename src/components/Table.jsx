@@ -1,3 +1,4 @@
+// src/components/Table.jsx
 import { useState, useEffect, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faPenToSquare } from "@fortawesome/free-solid-svg-icons";
@@ -14,6 +15,7 @@ const normalizeToArray = (value) => {
 };
 
 export default function Table({
+  loading,
   columns,
   data,
   onRowClick,
@@ -26,6 +28,8 @@ export default function Table({
   onFilterChange,
   openFilterRequest,
   onFilterOpened,
+  rowActions,
+  bulkActions,
 }) {
   const [sort, setSort] = useState({});
   const [activeFilter, setActiveFilter] = useState(null);
@@ -234,7 +238,6 @@ export default function Table({
       const containerRect = container.getBoundingClientRect();
 
       container.scrollTo({
-        
         left: thRect.left - containerRect.left + container.scrollLeft - 40,
         behavior: "smooth",
       });
@@ -248,6 +251,11 @@ export default function Table({
       ref={tableScrollRef}
       className="relative overflow-auto max-h-[90vh] bg-slate-400 rounded shadow-md"
     >
+      {loading && (
+        <div className="absolute inset-0 z-30 bg-slate-800/60 flex items-center justify-center">
+          <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
       <div className="relative min-w-full">
         <div className="bg-slate-500 -mt-0.5 sticky h-0.5 -top-0.5 left-0 z-20 ">
           {activeFilter && (
@@ -276,6 +284,25 @@ export default function Table({
             />
           )}
         </div>
+        {selectable && bulkActions && selectedIds.size > 0 && (
+          <div className="sticky top-0 z-30 bg-slate-800 border-b border-slate-700 px-4 py-2 flex justify-between items-center">
+            <span className="text-sm text-gray-300">
+              {selectedIds.size} selected
+            </span>
+
+            <div className="flex gap-2">
+              {bulkActions.map((action) => (
+                <button
+                  key={action.label}
+                  onClick={() => action.onClick(selectedIds)}
+                  className={action.className}
+                >
+                  {action.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <table className="min-w-full text-sm table-fixed text-gray-300">
           <thead className="bg-slate-500 sticky top-0 z-10">
@@ -284,19 +311,23 @@ export default function Table({
                 <th className="sticky top-0 left-0 bg-slate-500 px-4 py-3 border-b text-center w-10">
                   <input
                     type="checkbox"
+                    disabled={loading}
                     checked={allSelected}
                     onChange={() => {
-                      onSetSelectedIds((prev) => {
-                        const next = new Set(prev);
-                        if (allSelected) {
-                          visibleRowIds.forEach((id) => next.delete(id));
-                        } else {
-                          visibleRowIds.forEach((id) => next.add(id));
-                        }
-                        return next;
-                      });
+                      if (loading) return;
+
+                      const next = new Set(selectedIds);
+
+                      if (allSelected) {
+                        visibleRowIds.forEach((id) => next.delete(id));
+                      } else {
+                        visibleRowIds.forEach((id) => next.add(id));
+                      }
+
+                      onSetSelectedIds(next);
                     }}
                   />
+                  
                 </th>
               )}
 
@@ -326,13 +357,16 @@ export default function Table({
 
           <tbody className="divide-y bg-gray-800">
             {sortedData.map((row) => (
-              <tr key={row._id} className="group hover:bg-gray-600">
+              <tr key={row._id} className="group hover:bg-gray-600 row-fade">
                 {selectable && (
                   <td className="sticky top-0 left-0 bg-gray-800/90 px-4 py-3 text-center group-hover:bg-gray-600/90">
                     <input
                       type="checkbox"
+                      disabled={loading}
                       checked={selectedIds.has(row._id)}
-                      onChange={() => onToggleRow(row._id)}
+                      onChange={() => {
+                        if (!loading) onToggleRow(row._id);
+                      }}
                       onClick={(e) => e.stopPropagation()}
                     />
                   </td>
@@ -363,17 +397,23 @@ export default function Table({
                   )
                 )}
 
-                <td className="px-4 py-3 flex justify-center gap-3 text-lg">
-                  <button onClick={() => onRowClick(row)}>
-                    <FontAwesomeIcon icon={faEye} />
-                  </button>
-                  <button
-                    onClick={() =>
-                      (window.location.href = `/users/${row._id}/edit`)
-                    }
-                  >
-                    <FontAwesomeIcon icon={faPenToSquare} />
-                  </button>
+                <td className="px-4 py-3 flex justify-center gap-3 text-sm">
+                  {rowActions ? (
+                    rowActions(row)
+                  ) : (
+                    <>
+                      <button onClick={() => onRowClick(row)}>
+                        <FontAwesomeIcon icon={faEye} />
+                      </button>
+                      <button
+                        onClick={() =>
+                          (window.location.href = `/clients/${row._id}/edit`)
+                        }
+                      >
+                        <FontAwesomeIcon icon={faPenToSquare} />
+                      </button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}

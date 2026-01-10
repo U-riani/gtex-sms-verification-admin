@@ -1,3 +1,4 @@
+// src/api/adminUserService.js
 import { adminFetch } from "./adminClient";
 
 export function getAdminUsers(page = 1, limit = 20, query = "") {

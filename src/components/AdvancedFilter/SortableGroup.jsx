@@ -1,3 +1,5 @@
+// src/components/AdvancedFilter/SortableGroup.jsx
+
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import ConditionRow from "./ConditionRow";

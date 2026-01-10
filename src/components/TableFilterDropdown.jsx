@@ -1,5 +1,7 @@
+// src/components/TableFilterDropdown.jsx
 import { useMemo, useState, useEffect, useLayoutEffect } from "react";
 import { OPERATORS } from "../constanst/operators";
+import { createPortal } from "react-dom";
 
 export default function TableFilterDropdown({
   anchorKey,
@@ -69,48 +71,40 @@ export default function TableFilterDropdown({
   useLayoutEffect(() => {
     const updatePosition = () => {
       const th = document.querySelector(`th[data-col="${anchorKey}"]`);
-      const container = containerRef.current;
-      if (!th || !container) return;
+      if (!th) return;
 
       const thRect = th.getBoundingClientRect();
-      const containerRect = container.getBoundingClientRect();
-
       const width = Math.max(thRect.width, 220);
 
-      const leftRaw = thRect.left - containerRect.left + container.scrollLeft;
-
-      const maxLeft = container.scrollLeft + container.clientWidth - width - 8;
-
       setStyle({
-        position: "absolute",
-        zIndex: 9999,
-        top: thRect.bottom - containerRect.top,
-        left: Math.min(leftRaw, maxLeft),
+        position: "fixed",
+        zIndex: 1,
+        top: thRect.bottom + 4,
+        left: Math.min(thRect.left, window.innerWidth - width - 8),
         minWidth: width,
-        maxWidth: width,
       });
     };
 
     updatePosition();
 
-    // Re-position on scroll + resize
     const container = containerRef.current;
-    if (container) {
-      container.addEventListener("scroll", updatePosition);
-    }
+
+    // 🔑 BOTH scroll sources are required
+    window.addEventListener("scroll", updatePosition, { passive: true });
+    container?.addEventListener("scroll", updatePosition, { passive: true });
     window.addEventListener("resize", updatePosition);
 
     return () => {
-      if (container) {
-        container.removeEventListener("scroll", updatePosition);
-      }
+      window.removeEventListener("scroll", updatePosition);
+      container?.removeEventListener("scroll", updatePosition);
       window.removeEventListener("resize", updatePosition);
     };
   }, [anchorKey, containerRef]);
-  return (
+
+  return createPortal(
     <div
       style={style}
-      className="table-filter-dropdown  z-50 w-56 bg-slate-800 border rounded p-2"
+      className="table-filter-dropdown z-[0] w-56 bg-slate-800 border rounded p-2"
       onClick={(e) => e.stopPropagation()}
     >
       <select
@@ -169,6 +163,7 @@ export default function TableFilterDropdown({
           Apply
         </button>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

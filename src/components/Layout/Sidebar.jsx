@@ -1,9 +1,24 @@
-import { NavLink } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { NavLink, useLocation } from "react-router-dom";
 
 export default function Sidebar({ open, onClose }) {
+  const location = useLocation();
+  const [clientsOpen, setClientsOpen] = useState(false);
+
   const linkBase =
     "block px-4 py-2 rounded hover:bg-blue-800 hover:text-white transition";
   const linkActive = "bg-blue-900 text-white";
+  const subLinkBase =
+    "block ml-6 px-4 py-2 rounded text-sm text-gray-300 hover:bg-blue-700 hover:text-white transition";
+
+  // Auto-open accordion when inside /clients/*
+  useEffect(() => {
+    if (!open) {
+      setClientsOpen(false);
+    } else if (location.pathname.startsWith("/clients/segment")) {
+      setClientsOpen(true);
+    }
+  }, [open, location.pathname]);
 
   return (
     <>
@@ -20,7 +35,7 @@ export default function Sidebar({ open, onClose }) {
           bg-slate-800 text-gray-100 transition-all duration-300
           fixed top-0 left-0 z-50 h-full w-56 overflow-y-auto
           ${open ? "translate-x-0" : "-translate-x-full"}
-          lg:static lg:h-auto lg:z-auto
+          lg:static lg:h-auto 
           ${open ? "lg:w-56" : "lg:w-0"}
         `}
       >
@@ -53,15 +68,55 @@ export default function Sidebar({ open, onClose }) {
               Dashboard
             </NavLink>
 
-            <NavLink
-              to="/users"
-              className={({ isActive }) =>
-                `${linkBase} ${isActive ? linkActive : ""}`
-              }
+            {/* Clients row */}
+            <div
+              className={`flex items-center justify-between rounded transition hover:bg-blue-800 ${
+                location.pathname.startsWith("/clients") ? linkActive : ""
+              }`}
             >
-              Users
-            </NavLink>
+              {/* Clients link */}
+              <NavLink
+                to="/clients"
+                className={({ isActive }) =>
+                  `flex-1 ${linkBase} ${isActive ? "text-white" : ""}`
+                }
+              >
+                Clients
+              </NavLink>
 
+              {/* Accordion toggle */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setClientsOpen((p) => !p);
+                }}
+                className="px-3 py-2 h-full bg-stone-100/10 text-gray-300 hover:text-white transition"
+                aria-label="Toggle clients menu"
+              >
+                <span
+                  className={`inline-block transition-transform duration-200 ${
+                    clientsOpen ? "rotate-180" : ""
+                  }`}
+                >
+                  ▾
+                </span>
+              </button>
+            </div>
+            {/* Accordion content */}
+            <div
+              className={`overflow-hidden transition-all duration-300 ${
+                clientsOpen ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
+              }`}
+            >
+              <NavLink
+                to="/clients/segments"
+                className={({ isActive }) =>
+                  `${subLinkBase} ${isActive ? linkActive : ""}`
+                }
+              >
+                Segments
+              </NavLink>
+            </div>
             <NavLink
               to="/sms-templates"
               className={({ isActive }) =>
