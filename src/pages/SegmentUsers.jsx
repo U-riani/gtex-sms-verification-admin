@@ -14,6 +14,7 @@ import {
   getSegments,
   undoRemoveUserFromSegment,
 } from "../api/segmentService";
+import { highlightMatch } from "../utils/highlightMatch";
 
 export default function SegmentUsers() {
   const { id } = useParams();
@@ -32,6 +33,13 @@ export default function SegmentUsers() {
   const toggleRow = useClientSelectionStore((s) => s.toggleId);
   const clearSelection = useClientSelectionStore((s) => s.clear);
   const showUndo = useUndoStore((s) => s.showUndo);
+  const columns = useMemo(
+    () =>
+      clientColumns({
+        highlight: search,
+      }),
+    [search]
+  );
 
   // ---------------------------
   // DATA
@@ -52,6 +60,10 @@ export default function SegmentUsers() {
     queryFn: getSegments,
   });
 
+  useEffect(() => {
+    console.log(">>> id", id, "page:", page);
+    console.log("--data", data);
+  }, [data]);
   const users = data?.users ?? [];
   const totalPages = Math.ceil((data?.total ?? 0) / 20);
 
@@ -178,27 +190,35 @@ export default function SegmentUsers() {
 
   const removeOneWithUndo = async (row) => {
     // optimistic UI
+    const prev = qc.getQueryData(["segment-users", id, page]);
+
     qc.setQueryData(["segment-users", id, page], (old) => ({
       ...old,
       users: old.users.filter((u) => u._id !== row._id),
       total: old.total - 1,
     }));
 
-    qc.invalidateQueries(["segments"]);
+    try {
+      const res = await removeUserFromSegment({
+        segmentId: id,
+        userId: row._id,
+      });
 
-    const res = await removeUserFromSegment({
-      segmentId: id,
-      userId: row._id,
-    });
+      showUndo({
+        message: "User removed",
+        undo: async () => {
+          await undoRemoveUserFromSegment({ deleteToken: res.deleteToken });
+          qc.invalidateQueries(["segment-users", id]);
+          qc.invalidateQueries(["segments"]);
+        },
+      });
 
-    showUndo({
-      message: "User removed",
-      undo: async () => {
-        await undoRemoveUserFromSegment({ deleteToken: res.deleteToken });
-        qc.invalidateQueries(["segment-users", id]);
-        qc.invalidateQueries(["segments"]);
-      },
-    });
+      // ✅ NOW it's safe
+      qc.invalidateQueries(["segments"]);
+    } catch (err) {
+      // rollback on failure
+      qc.setQueryData(["segment-users", id, page], prev);
+    }
   };
 
   const isBusy = localBusy || addMut.isLoading;
@@ -373,7 +393,7 @@ export default function SegmentUsers() {
 
       <Table
         loading={isLoading}
-        columns={clientColumns()}
+        columns={columns}
         data={filteredUsers}
         selectable
         selectedIds={selectedIds}

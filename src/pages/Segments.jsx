@@ -20,7 +20,7 @@ export default function Segments() {
   useEffect(() => {
     qc.invalidateQueries({ queryKey: ["segments"] });
   }, []);
-  
+
   const fromSelection =
     new URLSearchParams(location.search).get("from") === "selection";
 
@@ -92,7 +92,7 @@ export default function Segments() {
   // RENDER
   // ---------------------------
   return (
-    <div className="p-4 space-y-4 max-w-xl">
+    <div className="p-4 space-y-4 w">
       <h2 className="text-xl font-semibold text-white">Segments</h2>
 
       {fromSelection && selectedIds.size > 0 && (
@@ -162,7 +162,7 @@ export default function Segments() {
             className="flex justify-between items-center bg-slate-800 p-3 rounded"
           >
             <div
-              className="cursor-pointer"
+              className="cursor-pointer flex-1 "
               onClick={() => navigate(`/clients/segments/${s._id}`)}
             >
               <div className="text-white">{s.name}</div>
@@ -174,7 +174,7 @@ export default function Segments() {
                 if (!confirm(`Delete segment "${s.name}"?`)) return;
                 deleteMut.mutate(s._id);
               }}
-              className="text-red-400 hover:text-red-300 text-sm"
+              className="text-red-400 bg-red-400/10 py-2 px-2 rounded hover:text-red-300 hover:bg-red-300/30 text-sm cursor-pointer"
             >
               Delete
             </button>

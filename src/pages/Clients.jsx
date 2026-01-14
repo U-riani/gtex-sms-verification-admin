@@ -152,8 +152,8 @@ export default function Clients() {
     () =>
       users.map((u) => ({
         ...u,
-        smsPromo: u.promoChannels?.sms?.enabled ? "YES" : "NO",
-        emailPromo: u.promoChannels?.email?.enabled ? "YES" : "NO",
+        emailPromo: Boolean(u.promoChannels?.email?.enabled),
+        smsPromo: Boolean(u.promoChannels?.sms?.enabled),
       })),
     [users]
   );
@@ -212,6 +212,7 @@ export default function Clients() {
     {
       key: "firstName",
       label: "First name",
+      type: "text",
       sortable: true,
       filterable: true,
       render: (u) => highlightMatch(u.firstName, quickSearch),
@@ -219,34 +220,47 @@ export default function Clients() {
     {
       key: "lastName",
       label: "Last name",
+      type: "text",
       sortable: true,
       filterable: true,
       render: (u) => highlightMatch(u.lastName, quickSearch),
     },
     {
-      key: "email",
-      label: "Email",
-      sortable: true,
-      filterable: true,
-      render: (u) => highlightMatch(u.email, quickSearch),
-    },
-    {
       key: "phone",
       label: "Phone",
+      type: "text",
       sortable: true,
       filterable: true,
-      render: (u) => highlightMatch(u.phone, quickSearch),
+      render: (u) => highlightMatch(u.phone.full, quickSearch),
+    },
+    {
+      key: "dateOfBirth",
+      label: "Birthdate",
+      type: "date",
+      sortable: true,
+      filterable: true,
+      render: (u) => highlightMatch(u.dateOfBirth, quickSearch),
     },
     {
       key: "city",
       label: "City",
+      type: "text",
       sortable: true,
       filterable: true,
       render: (u) => highlightMatch(u.city, quickSearch),
     },
     {
+      key: "country",
+      label: "Country",
+      type: "text",
+      sortable: true,
+      filterable: true,
+      render: (u) => highlightMatch(u.country, quickSearch),
+    },
+    {
       key: "brands",
       label: "Brands",
+      type: "enum",
       sortable: true,
       filterable: true,
       render: (u) => highlightMatch(u.brands, quickSearch),
@@ -254,18 +268,22 @@ export default function Clients() {
     {
       key: "emailPromo",
       label: "Email Promo",
+      type: "boolean",
       sortable: true,
       filterable: true,
-      render: (u) => highlightMatch(u.emailPromo, quickSearch),
+      render: (u) => highlightMatch(u.emailPromo ? "YES" : "NO", quickSearch),
     },
     {
       key: "smsPromo",
       label: "SMS Promo",
+      type: "boolean",
       sortable: true,
       filterable: true,
-      render: (u) => highlightMatch(u.smsPromo, quickSearch),
+      render: (u) => highlightMatch(u.smsPromo ? "YES" : "NO", quickSearch),
     },
   ];
+
+  console.log(">>> filter", filters);
 
   // ---------------------------
   // render
@@ -373,12 +391,13 @@ export default function Clients() {
         onToggleRow={toggleRow}
         onRowClick={(row) => navigate(`/clients/${row._id}`)}
         onFilterChange={(key, payload) => {
+          const col = columns.find((c) => c.key === key);
+
           setFilters((prev) => ({
             ...prev,
             [key]: {
-              type: "enum",
-              operator: payload.operator || "contains",
-              values: payload.values || [],
+              type: col?.type ?? "text",
+              ...payload,
             },
           }));
         }}

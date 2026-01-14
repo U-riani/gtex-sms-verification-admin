@@ -174,12 +174,24 @@ export default function ActiveFilters({
 
           {/* COLUMN FILTERS */}
           {Object.entries(columnFilters).map(([key, f]) => {
-            const isEnum = f.type === "enum";
-            const values = isEnum ? f.values : [f.value].filter(Boolean);
+            const values = Array.isArray(f.values) ? f.values : [];
 
-            const fullValue = values.join(", ");
-            const shortValue = truncate(values[0]);
-            const extraCount = values.length - 1;
+            const safeValues =
+              f.type === "date"
+                ? f.operator === "between" && values.length === 2
+                  ? [
+                      `${new Date(values[0]).toLocaleDateString()} – ${new Date(
+                        values[1]
+                      ).toLocaleDateString()}`,
+                    ]
+                  : values.map((v) => new Date(v).toLocaleDateString())
+                : f.type === "boolean"
+                ? values.map((v) => (v ? "YES" : "NO"))
+                : values.map(String);
+
+            const fullValue = safeValues.join(", ");
+            const shortValue = truncate(safeValues[0] ?? "");
+            const extraCount = safeValues.length - 1;
 
             return (
               <Chip

@@ -1,46 +1,62 @@
 import { highlightMatch } from "../utils/highlightMatch";
 
-export const clientColumns = (quickSearch = "") => [
+export const clientColumns = ({ highlight } = {}) => [
   {
     key: "firstName",
     label: "First name",
     sortable: true,
     filterable: true,
-    render: (u) => highlightMatch(u.firstName, quickSearch),
+    render: (u) =>
+      highlight ? highlightMatch(u.lastName, highlight) : u.lastName,
   },
   {
     key: "lastName",
     label: "Last name",
     sortable: true,
     filterable: true,
-    render: (u) => highlightMatch(u.lastName, quickSearch),
+    render: (u) =>
+      highlight ? highlightMatch(u.lastName, highlight) : u.lastName,
   },
   {
     key: "email",
     label: "Email",
     sortable: true,
     filterable: true,
-    render: (u) => highlightMatch(u.email, quickSearch),
+    render: (u) => (highlight ? highlightMatch(u.email, highlight) : u.email),
   },
   {
     key: "phone",
     label: "Phone",
     sortable: true,
     filterable: true,
-    render: (u) => highlightMatch(u.phone, quickSearch),
+    render: (u) => (highlight ? highlightMatch(u.phone.full, highlight) : u.phone.full),
+  },
+  {
+    key: "dateOfBirth",
+    label: "Birthdate",
+    sortable: true,
+    filterable: true,
+    render: (u) => (highlight ? highlightMatch(u.dateOfBirth, highlight) : u.dateOfBirth),
   },
   {
     key: "city",
     label: "City",
     sortable: true,
     filterable: true,
-    render: (u) => highlightMatch(u.city, quickSearch),
+    render: (u) => (highlight ? highlightMatch(u.city, highlight) : u.city),
+  },
+  {
+    key: "country",
+    label: "Country",
+    sortable: true,
+    filterable: true,
+    render: (u) => (highlight ? highlightMatch(u.country, highlight) : u.country),
   },
   {
     key: "brands",
     label: "Brands",
     sortable: true,
     filterable: true,
-    render: (u) => highlightMatch(u.brands, quickSearch),
+    render: (u) => (highlight ? highlightMatch(u.brands, highlight) : u.brands),
   },
 ];

@@ -18,7 +18,7 @@ export const USER_ADVANCED_FILTER_FIELDS = [
     operators: ["contains", "eq"],
   },
   {
-    key: "phone",
+    key: "phone.full",
     label: "Phone",
     type: "text",
     operators: ["contains", "eq"],

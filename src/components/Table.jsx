@@ -1,17 +1,65 @@
 // src/components/Table.jsx
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faPenToSquare } from "@fortawesome/free-solid-svg-icons";
-
 import { brandsWithColor } from "../data/brandsWIthColors";
 import TableHeadCell from "../components/TableHeadCell";
 import TableFilterDropdown from "../components/TableFilterDropdown";
 import { SORT_STATES } from "../constanst/sortStates";
+import normalizeCellValue from "../utils/normalizeCellValue";
 
-const normalizeToArray = (value) => {
+const normalizeEnum = (value) => {
   if (Array.isArray(value)) return value.map(String);
   if (value == null) return [];
   return [String(value)];
+};
+const FILTER_OPERATORS = {
+  text: {
+    contains: (cell, selected) =>
+      selected.some((s) => cell.some((c) => c.includes(s))),
+    not_contains: (cell, selected) =>
+      selected.every((s) => cell.every((c) => !c.includes(s))),
+    equals: (cell, selected) => selected.some((s) => cell.includes(s)),
+    not_equals: (cell, selected) => selected.every((s) => !cell.includes(s)),
+    empty: (cell) => cell.length === 0 || cell.every((v) => v === ""),
+    not_empty: (cell) => cell.some((v) => v !== ""),
+  },
+
+  enum: {
+    in: (cell, selected) => selected.some((s) => cell.includes(s)),
+    not_in: (cell, selected) => selected.every((s) => !cell.includes(s)),
+    empty: (cell) => cell.length === 0,
+    not_empty: (cell) => cell.length > 0,
+  },
+
+  number: {
+    equals: (cell, selected) => selected.includes(cell[0]),
+    gt: (cell, selected) => cell[0] > selected[0],
+    lt: (cell, selected) => cell[0] < selected[0],
+    between: (cell, selected) =>
+      cell[0] >= selected[0] && cell[0] <= selected[1],
+  },
+
+  date: {
+    on: (cell, selected) => cell[0] === selected[0],
+    before: (cell, selected) => cell[0] < selected[0],
+    after: (cell, selected) => cell[0] > selected[0],
+    between: (cell, selected) =>
+      cell[0] >= selected[0] && cell[0] <= selected[1],
+  },
+  boolean: {
+    equals: (cell, selected) => {
+      // If both true & false selected → no filtering
+      if (selected.length !== 1) return true;
+      return cell[0] === selected[0];
+    },
+
+    not_equals: (cell, selected) => {
+      // If both selected → no filtering
+      if (selected.length !== 1) return true;
+      return cell[0] !== selected[0];
+    },
+  },
 };
 
 export default function Table({
@@ -40,131 +88,42 @@ export default function Table({
     setSort(state === SORT_STATES.NONE ? {} : { [key]: state });
   };
 
-  const getFilteredDataForColumn = (columnKey) => {
+  const getFilteredDataForColumn = (columnKey) =>
+    data.filter((row) =>
+      Object.entries(filters)
+        .filter(([k]) => k !== columnKey)
+        .every(([k, f]) => {
+          const fn = FILTER_OPERATORS[f.type]?.[f.operator];
+          if (!fn) return true;
+          return fn(normalizeCellValue(row[k], f.type), f.values);
+        })
+    );
+
+  const filteredData = useMemo(() => {
     let result = [...data];
-    console.log("++++", result);
+
     Object.entries(filters).forEach(([key, filter]) => {
-      if (key === columnKey) return;
+      const { type, operator, values } = filter;
+
+      const fn = FILTER_OPERATORS[type]?.[operator];
+      if (!fn) {
+        console.warn("Invalid filter operator:", filter);
+        return;
+      }
+
+      const normalizedSelected =
+        type === "text" || type === "enum"
+          ? values.map((v) => String(v).toLowerCase())
+          : values;
 
       result = result.filter((row) => {
-        const values = normalizeToArray(row[key]);
-        if (!values.length) return false;
-
-        if (filter.type === "text") {
-          const search = (filter.value || "").trim().toLowerCase();
-          if (!search) return true;
-
-          return values.some((v) => v.includes(search));
-        }
-
-        if (filter.type === "enum") {
-          return (
-            filter.values.length === 0 ||
-            values.some((v) => filter.values.includes(v))
-          );
-        }
-
-        return true;
+        const cell = normalizeCellValue(row[key], type);
+        return fn(cell, normalizedSelected);
       });
     });
 
     return result;
-  };
-
-  let filteredData = [...data];
-
-  Object.entries(filters).forEach(([key, filter]) => {
-    filteredData = filteredData.filter((row) => {
-      const rawValues = normalizeToArray(row[key]);
-
-      // No value in this column at all → usually exclude
-      if (rawValues.length === 0) {
-        // but "is empty" should pass, "is not empty" should fail
-        if (filter.type === "text") {
-          if (filter.operator === "empty") return true;
-          if (filter.operator === "not_empty") return false;
-        }
-        return false;
-      }
-
-      const values = rawValues.map((v) =>
-        String(v ?? "")
-          .trim()
-          .toLowerCase()
-      );
-
-      if (filter.type === "text") {
-        const search = (filter.value || "").trim().toLowerCase();
-
-        // Use the saved operator (or fallback to contains)
-        const operator = filter.operator || "contains";
-
-        if (operator === "empty") {
-          return values.length === 0 || values.every((v) => v === "");
-        }
-        if (operator === "not_empty") {
-          return values.some((v) => v !== "");
-        }
-
-        if (!search) return true;
-
-        switch (operator) {
-          case "contains":
-            return values.some((v) => v.includes(search));
-          case "not_contains":
-            return values.every((v) => !v.includes(search));
-          case "eq":
-          case "equals":
-            return values.some((v) => v === search);
-          case "neq":
-          case "not_equals":
-            return values.every((v) => v !== search);
-          case "starts_with":
-            return values.some((v) => v.startsWith(search));
-          case "ends_with":
-            return values.some((v) => v.endsWith(search));
-          default:
-            return true; // unknown operator → show
-        }
-      }
-
-      // // Enum / multi-select filter
-      // if (filter.type === "enum") {
-      //   if (!filter.values?.length) return true;
-
-      //   const operator = filter.operator || "contains";
-
-      //   if (operator === "not_contains") {
-      //     // row must NOT contain any selected value
-      //     return values.every((v) => !filter.values.includes(v));
-      //   }
-
-      //   // default = contains
-      //   return values.some((v) => filter.values.includes(v));
-      // }
-
-      // Enum / multi-select filter
-      if (filter.type === "enum") {
-        if (!filter.values?.length) return true;
-
-        const operator = filter.operator || "contains";
-
-        // 🔑 normalize selected values ONCE
-        const normalizedSelected = filter.values.map((v) =>
-          String(v).trim().toLowerCase()
-        );
-
-        if (operator === "not_contains") {
-          return values.every((v) => !normalizedSelected.includes(v));
-        }
-
-        // default = contains
-        return values.some((v) => normalizedSelected.includes(v));
-      }
-
-      return true;
-    });
-  });
+  }, [data, filters]);
 
   const sortedData = [...filteredData];
   const visibleRowIds = sortedData.map((row) => row._id);
@@ -246,10 +205,15 @@ export default function Table({
     onFilterOpened?.();
   }, [openFilterRequest]);
 
+  const columnTypeMap = useMemo(
+    () => Object.fromEntries(columns.map((c) => [c.key, c.type || "text"])),
+    [columns]
+  );
+  console.log(filters[activeFilter], ">>> activeFilter");
   return (
     <div
       ref={tableScrollRef}
-      className="relative overflow-auto max-h-[90vh] bg-slate-400 rounded shadow-md"
+      className="relative overflow-auto max-h-[80vh] min-h-[350px] bg-slate-800 rounded shadow-md"
     >
       {loading && (
         <div className="absolute inset-0 z-30 bg-slate-800/60 flex items-center justify-center">
@@ -263,22 +227,20 @@ export default function Table({
               anchorKey={activeFilter}
               containerRef={tableScrollRef}
               columnKey={activeFilter}
-              columnType={filters[activeFilter]?.type ?? "text"} // ✅ ADD THIS
+              columnType={columnTypeMap[activeFilter] ?? "text"}
               data={getFilteredDataForColumn(activeFilter)}
               value={
-                filters[activeFilter]?.type === "enum"
+                filters[activeFilter]
                   ? {
-                      values: filters[activeFilter].values,
-                      operator: filters[activeFilter].operator, // ✅ KEEP operator
+                      values: filters[activeFilter].values ?? [],
+                      operator: filters[activeFilter].operator,
                     }
-                  : {
-                      search: filters[activeFilter]?.value,
-                      operator: filters[activeFilter]?.operator,
-                    }
+                  : undefined
               }
               onChange={(payload) => {
                 onFilterChange?.(activeFilter, payload);
                 setActiveFilter(null);
+                console.log(payload, ">>> payload");
               }}
               onClose={() => setActiveFilter(null)}
             />
@@ -327,7 +289,6 @@ export default function Table({
                       onSetSelectedIds(next);
                     }}
                   />
-                  
                 </th>
               )}
 
@@ -377,10 +338,10 @@ export default function Table({
                     <td key={col.key} className="px-4">
                       <div
                         className={
-                          row.brands.length > 4 ? "min-w-[310px]" : "flex"
+                          row.brands?.length > 4 ? "min-w-[310px]" : "flex"
                         }
                       >
-                        {row.brands.map((el) => (
+                        {row.brands?.map((el) => (
                           <span
                             key={el}
                             className={`inline-flex items-center text-xs rounded mx-1 px-2 py-0.5 ${brandsWithColor[el]?.bg} ${brandsWithColor[el]?.text}`}
