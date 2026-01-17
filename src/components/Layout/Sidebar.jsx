@@ -127,15 +127,6 @@ export default function Sidebar({ open, onClose }) {
             </NavLink>
 
             <NavLink
-              to="/sms-history"
-              className={({ isActive }) =>
-                `${linkBase} ${isActive ? linkActive : ""} text-nowrap`
-              }
-            >
-              Sms History
-            </NavLink>
-
-            <NavLink
               to="/sms-campaigns"
               className={({ isActive }) =>
                 `${linkBase} ${isActive ? linkActive : ""} text-nowrap`
@@ -145,13 +136,22 @@ export default function Sidebar({ open, onClose }) {
             </NavLink>
 
             <NavLink
+              to="/sms-history"
+              className={({ isActive }) =>
+                `${linkBase} ${isActive ? linkActive : ""} text-nowrap`
+              }
+            >
+              Sms History
+            </NavLink>
+
+            {/* <NavLink
               to="/sms-template-analytics"
               className={({ isActive }) =>
                 `${linkBase} ${isActive ? linkActive : ""} text-nowrap`
               }
             >
               Template Analytics
-            </NavLink>
+            </NavLink> */}
           </nav>
         </div>
       </aside>

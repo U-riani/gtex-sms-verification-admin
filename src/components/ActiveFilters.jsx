@@ -192,14 +192,21 @@ export default function ActiveFilters({
             const fullValue = safeValues.join(", ");
             const shortValue = truncate(safeValues[0] ?? "");
             const extraCount = safeValues.length - 1;
+            const label =
+              `${key}: ` +
+              f.conditions
+                .map((c, i) =>
+                  i < f.conditions.length - 1
+                    ? `${c.operator} ${c.logic}`
+                    : c.operator
+                )
+                .join(" ");
 
             return (
               <Chip
                 key={key}
                 color="green"
-                label={`${key}: ${shortValue}${
-                  extraCount > 0 ? ` +${extraCount}` : ""
-                }`}
+                label={label + (extraCount > 0 ? ` (+${extraCount})` : "")}
                 title={`${key}: ${fullValue}`} // hover = full list
                 onRemove={() => onRemoveColumnFilter(key)}
                 onEdit={() => onEditColumnFilter(key)}

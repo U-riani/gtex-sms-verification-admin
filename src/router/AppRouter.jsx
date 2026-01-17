@@ -14,6 +14,9 @@ import Clients from "../pages/Clients";
 import Segments from "../pages/Segments";
 import SegmentUsers from "../pages/SegmentUsers";
 import UndoSnackbar from "../components/UndoSnackbar";
+// import SmsCampaigns from "../pages/SmsCampaigns";
+import SmsTemplateEdit from "../pages/SmsTemplateEdit";
+import SmsCampaignDetails from "../pages/SmsCampaignDetails";
 
 export default function AppRouter() {
   return (
@@ -58,7 +61,7 @@ export default function AppRouter() {
         />
 
         <Route
-          path="/users/:id"
+          path="/clients/:id"
           element={
             <LayoutRoute>
               <UserDetails />
@@ -67,7 +70,7 @@ export default function AppRouter() {
         />
 
         <Route
-          path="/users/:id/edit"
+          path="/clients/:id/edit"
           element={
             <LayoutRoute>
               <EditUser />
@@ -83,10 +86,10 @@ export default function AppRouter() {
           }
         />
         <Route
-          path="/sms-history"
+          path="/sms-templates/:id/edit"
           element={
             <LayoutRoute>
-              <SmsHistory />
+              <SmsTemplateEdit />
             </LayoutRoute>
           }
         />
@@ -95,6 +98,22 @@ export default function AppRouter() {
           element={
             <LayoutRoute>
               <SmsCampaigns />
+            </LayoutRoute>
+          }
+        />
+        <Route
+          path="/sms-campaigns/:id"
+          element={
+            <LayoutRoute>
+              <SmsCampaignDetails />
+            </LayoutRoute>
+          }
+        />
+        <Route
+          path="/sms-history"
+          element={
+            <LayoutRoute>
+              <SmsHistory />
             </LayoutRoute>
           }
         />

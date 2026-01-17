@@ -7,7 +7,7 @@ export const clientColumns = ({ highlight } = {}) => [
     sortable: true,
     filterable: true,
     render: (u) =>
-      highlight ? highlightMatch(u.lastName, highlight) : u.lastName,
+      highlight ? highlightMatch(u.firstName, highlight) : u.firstName,
   },
   {
     key: "lastName",

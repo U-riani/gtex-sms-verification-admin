@@ -6,42 +6,43 @@ import { useQuery } from "@tanstack/react-query";
 import { useClientSelectionStore } from "../store/clientSelectionStore";
 import { getAdminUsers, advancedFilterUsers } from "../api/adminUserService";
 
-import Table from "../components/Table";
-import Pagination from "../components/Pagination";
+// import Table from "../components/Table";
+// import Pagination from "../components/Pagination";
 import SmsModalCopy1 from "../components/SmsModalCopy1";
-import AdvancedFilterModal from "../components/AdvancedFilterModal";
-import ActiveFilters from "../components/ActiveFilters";
+// import AdvancedFilterModal from "../components/AdvancedFilterModal";
+// import ActiveFilters from "../components/ActiveFilters";
 import { highlightMatch } from "../utils/highlightMatch";
 import { loadPresets, savePresets } from "../utils/filterPresets";
+import DataTableView from "../components/DataTableView";
 
-function SearchBar({ value, onChange, onClear, onAdvanced }) {
-  return (
-    <div className="relative flex items-center bg-slate-700 rounded px-3 py-2">
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Search users…"
-        className="flex-1 bg-transparent text-white placeholder-gray-400 focus:outline-none pr-16"
-      />
+// function SearchBar({ value, onChange, onClear, onAdvanced }) {
+//   return (
+//     <div className="relative flex items-center bg-slate-700 rounded px-3 py-2">
+//       <input
+//         value={value}
+//         onChange={(e) => onChange(e.target.value)}
+//         placeholder="Search users…"
+//         className="flex-1 bg-transparent text-white placeholder-gray-400 focus:outline-none pr-16"
+//       />
 
-      {value && (
-        <button
-          onClick={onClear}
-          className="absolute right-10 text-gray-300 hover:text-white"
-        >
-          ✕
-        </button>
-      )}
+//       {value && (
+//         <button
+//           onClick={onClear}
+//           className="absolute right-10 text-gray-300 hover:text-white"
+//         >
+//           ✕
+//         </button>
+//       )}
 
-      <button
-        onClick={onAdvanced}
-        className="absolute right-3 text-gray-300 hover:text-white"
-      >
-        ⌄
-      </button>
-    </div>
-  );
-}
+//       <button
+//         onClick={onAdvanced}
+//         className="absolute right-3 text-gray-300 hover:text-white"
+//       >
+//         ⌄
+//       </button>
+//     </div>
+//   );
+// }
 
 export default function Clients() {
   const navigate = useNavigate();
@@ -226,6 +227,14 @@ export default function Clients() {
       render: (u) => highlightMatch(u.lastName, quickSearch),
     },
     {
+      key: "email",
+      label: "Email",
+      type: "text",
+      sortable: true,
+      filterable: true,
+      render: (u) => highlightMatch(u.email, quickSearch),
+    },
+    {
       key: "phone",
       label: "Phone",
       type: "text",
@@ -285,6 +294,26 @@ export default function Clients() {
 
   console.log(">>> filter", filters);
 
+  const onFilterChange = (key, payload) => {
+    const col = columns.find((c) => c.key === key);
+
+    setFilters((prev) => ({
+      ...prev,
+      [key]: {
+        type: col?.type ?? "text",
+        ...payload,
+      },
+    }));
+  };
+
+  // const editAdvancedCondition = (gi, ci) => {
+  //   setAdvancedOpen(true);
+
+  //   setTimeout(() => {
+  //     const el = document.querySelector(`[data-adv-cond="${gi}-${ci}"]`);
+  //     el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  //   }, 50);
+  // };
   // ---------------------------
   // render
   // ---------------------------
@@ -296,7 +325,7 @@ export default function Clients() {
         </p>
       )}
 
-      <SearchBar
+      {/* <SearchBar
         value={quickSearch}
         onChange={setQuickSearch}
         onClear={clearQuickSearch}
@@ -391,15 +420,24 @@ export default function Clients() {
         onToggleRow={toggleRow}
         onRowClick={(row) => navigate(`/clients/${row._id}`)}
         onFilterChange={(key, payload) => {
+          console.log("[Clients onFilterChange]", {
+            column: key,
+            payload,
+          });
           const col = columns.find((c) => c.key === key);
 
-          setFilters((prev) => ({
-            ...prev,
-            [key]: {
-              type: col?.type ?? "text",
-              ...payload,
-            },
-          }));
+          setFilters((prev) => {
+            const next = {
+              ...prev,
+              [key]: {
+                type: col?.type ?? "text",
+                ...payload,
+              },
+            };
+
+            console.log("[Clients filters state]", next);
+            return next;
+          });
         }}
         openFilterRequest={openColumnFilter}
         onFilterOpened={clearOpenColumnFilter}
@@ -407,7 +445,7 @@ export default function Clients() {
 
       {!quickSearch && (
         <Pagination page={page} totalPages={totalPages} onChange={setPage} />
-      )}
+      )} */}
 
       {showSmsModal && (
         <SmsModalCopy1
@@ -418,6 +456,88 @@ export default function Clients() {
           }}
         />
       )}
+      <DataTableView
+        // options
+        enableSearch={true}
+        enableAdvancedFilter={true}
+        enableColumnFilters={true}
+        enablePagination={true}
+        /* SEARCH */
+        search={quickSearch}
+        onSearchChange={setQuickSearch}
+        onSearchClear={clearQuickSearch}
+        onOpenAdvanced={() => setAdvancedOpen(true)}
+        /* ADVANCED FILTER */
+        advancedOpen={advancedOpen}
+        advancedFilter={advancedFilter}
+        onCloseAdvanced={() => setAdvancedOpen(false)}
+        onApplyAdvanced={(filter) => {
+          setAdvancedFilter(filter);
+          setAdvancedOpen(false);
+          setPage(1);
+        }}
+        presets={presets}
+        selectedPresetId={selectedPresetId}
+        onSavePreset={(f) => {
+          const name = prompt("Preset name");
+          if (!name) return;
+          setPresets((p) => [
+            ...p,
+            { id: crypto.randomUUID(), name, filter: structuredClone(f) },
+          ]);
+        }}
+        onSelectPreset={(id, setModalFilter) => {
+          setSelectedPresetId(id);
+          const p = presets.find((x) => x.id === id);
+          if (p) setModalFilter(structuredClone(p.filter));
+        }}
+        onDeletePreset={() => {
+          setPresets((p) => p.filter((x) => x.id !== selectedPresetId));
+          setSelectedPresetId("");
+        }}
+        /* ACTIVE FILTERS */
+        columnFilters={filters}
+        onRemoveColumnFilter={removeColumnFilter}
+        onEditColumnFilter={editColumnFilter}
+        onRemoveAdvancedCondition={removeAdvancedCondition}
+        onRemoveAdvancedGroup={removeAdvancedGroup}
+        onEditAdvancedFilter={editAdvancedCondition}
+        /* TABLE */
+        tableProps={{
+          loading: isLoading,
+          columns,
+          data: filteredUsers,
+          selectable: true,
+          selectedIds,
+          onSetSelectedIds: setSelectedIds,
+          onToggleRow: toggleRow,
+          filters,
+          onFilterChange,
+          openFilterRequest: openColumnFilter,
+          onFilterOpened: clearOpenColumnFilter,
+          onRowClick: (row) => navigate(`/clients/${row._id}`),
+        }}
+        /* SELECTION BAR */
+        selectionBar={
+          selectedIds.size > 0 && (
+            <div className="flex justify-between bg-slate-700 px-4 py-2 rounded">
+              <span className="text-sm text-gray-300">
+                {selectedIds.size} selected
+              </span>
+              <button
+                onClick={() => navigate("/clients/segments?from=selection")}
+                className="bg-blue-600 px-4 py-1 rounded text-sm text-white"
+              >
+                Add to Segment
+              </button>
+            </div>
+          )
+        }
+        /* PAGINATION */
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+      />
     </div>
   );
 }

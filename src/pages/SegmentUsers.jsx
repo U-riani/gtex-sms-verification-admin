@@ -4,8 +4,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useClientSelectionStore } from "../store/clientSelectionStore";
 import { useUndoStore } from "../store/undoStore";
 
-import Table from "../components/Table";
-import Pagination from "../components/Pagination";
+// import Table from "../components/Table";
+import DataTableView from "../components/DataTableView";
+// import Pagination from "../components/Pagination";
 import { clientColumns } from "../config/clientColumns";
 import {
   getSegmentUsers,
@@ -14,7 +15,7 @@ import {
   getSegments,
   undoRemoveUserFromSegment,
 } from "../api/segmentService";
-import { highlightMatch } from "../utils/highlightMatch";
+// import { highlightMatch } from "../utils/highlightMatch";
 
 export default function SegmentUsers() {
   const { id } = useParams();
@@ -318,14 +319,14 @@ export default function SegmentUsers() {
         </button>
       </div>
 
-      <input
+      {/* <input
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search in segment…"
         className="w-full bg-slate-700 text-white px-3 py-2 rounded"
-      />
+      /> */}
 
-      {selectedIds.size > 0 && (
+      {/* {selectedIds.size > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-800 border border-slate-600 rounded px-4 py-2">
           <span className="text-sm text-gray-200">
             {selectedIds.size} users selected
@@ -337,7 +338,7 @@ export default function SegmentUsers() {
             {actionBtn("remove", "bg-red-600", "Remove")}
           </div>
         </div>
-      )}
+      )} */}
 
       {action && (
         <div className="bg-slate-800 border border-slate-700 rounded p-3 space-y-2">
@@ -391,30 +392,59 @@ export default function SegmentUsers() {
         </div>
       )}
 
-      <Table
-        loading={isLoading}
-        columns={columns}
-        data={filteredUsers}
-        selectable
-        selectedIds={selectedIds}
-        onToggleRow={toggleRow}
-        onSetSelectedIds={setSelectedIds}
-        filters={filters}
-        onFilterChange={(key, payload) =>
-          setFilters((prev) => ({ ...prev, [key]: payload }))
+      <DataTableView
+        /* feature flags */
+        enableSearch
+        enablePagination
+        /* SEARCH */
+        search={search}
+        onSearchChange={setSearch}
+        onSearchClear={() => setSearch("")}
+        /* TABLE */
+        tableProps={{
+          loading: isLoading,
+          columns,
+          data: filteredUsers,
+          selectable: true,
+          selectedIds,
+          onToggleRow: toggleRow,
+          onSetSelectedIds: setSelectedIds,
+          filters,
+          onFilterChange: (key, payload) =>
+            setFilters((prev) => ({ ...prev, [key]: payload })),
+          rowActions: (row) => (
+            <button
+              disabled={isBusy}
+              onClick={() => removeOneWithUndo(row)}
+              className="text-red-400 hover:text-red-300 disabled:opacity-40"
+            >
+              Remove
+            </button>
+          ),
+        }}
+        /* PAGINATION */
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        /* SELECTION BAR */
+        selectionBar={
+          selectedIds.size > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-800 border border-slate-600 rounded px-4 py-2">
+              <span className="text-sm text-gray-200">
+                {selectedIds.size} users selected
+              </span>
+
+              <div className="flex gap-2">
+                {actionBtn("copy", "bg-blue-600", "Copy")}
+                {actionBtn("move", "bg-orange-600", "Move")}
+                {actionBtn("remove", "bg-red-600", "Remove")}
+              </div>
+            </div>
+          )
         }
-        rowActions={(row) => (
-          <button
-            disabled={isBusy}
-            onClick={() => removeOneWithUndo(row)}
-            className="text-red-400 hover:text-red-300 disabled:opacity-40"
-          >
-            Remove
-          </button>
-        )}
       />
 
-      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+      {/* <Pagination page={page} totalPages={totalPages} onChange={setPage} /> */}
 
       <div className="text-xs text-gray-400">
         Bulk actions apply to selected users only.

@@ -1,7 +1,19 @@
+// src/api/adminSmsTemplateService.js
 import { adminFetch } from "./adminClient";
 
-export function getSmsTemplates(brand) {
-  return adminFetch(`/admin/sms/templates?brand=${brand}`);
+// src/api/adminSmsTemplateService.js
+export function getSmsTemplates({ q, brand } = {}) {
+  const params = new URLSearchParams();
+
+  if (q) params.set("q", q);
+  if (brand) params.set("brand", brand);
+
+  const qs = params.toString();
+  return adminFetch(`/admin/sms/templates${qs ? `?${qs}` : ""}`);
+}
+
+export function getSmsTemplateById(id) {
+  return adminFetch(`/admin/sms/templates/${id}`);
 }
 
 export function createSmsTemplate(payload) {

@@ -1,171 +1,168 @@
-import { useEffect, useState } from "react";
+// src/pages/SmsHistory.jsx
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+
+import DataTableView from "../components/DataTableView";
 import {
   getSmsHistory,
   retryFailedSms,
   exportSmsHistoryCsv,
+  getSmsHistoryAdvanced,
 } from "../api/adminSmsHistoryService";
-import Pagination from "../components/Pagination";
-import { SMS_BRANDS } from "../data/brands";
-import { useSearchParams } from "react-router-dom";
+
+import { smsHistoryColumns } from "../config/smsHistoryColumns";
+import { useSmsHistoryStore } from "../store/smsHistoryStore";
 
 export default function SmsHistory() {
-  const [items, setItems] = useState([]);
-  const [selected, setSelected] = useState(new Set());
-  const [loading, setLoading] = useState(true);
   const [params] = useSearchParams();
   const campaignId = params.get("campaignId");
 
-  // filters
-  const [brand, setBrand] = useState("");
-  const [status, setStatus] = useState("");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  /* ---------------------------
+   * STORE (single source of truth)
+   * --------------------------- */
+  const {
+    selectedIds,
+    toggleSelected,
+    clearSelected,
 
-  // pagination
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+    search,
+    setSearch,
 
-  useEffect(() => {
-    load();
-  }, [brand, status, from, to, page, campaignId]);
+    columnFilters,
+    setColumnFilter,
+    removeColumnFilter,
 
+    advancedFilter,
+    advancedOpen,
+    openAdvanced,
+    closeAdvanced,
+    setAdvancedFilter,
+
+    page,
+    setPage,
+    totalPages,
+    setTotalPages,
+  } = useSmsHistoryStore();
+
+  /* ---------------------------
+   * DATA
+   * --------------------------- */
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  /* ---------------------------
+   * LOAD DATA
+   * --------------------------- */
   const load = async () => {
     setLoading(true);
-    const res = await getSmsHistory({
-      brand,
-      status,
-      from,
-      to,
-      campaignId,
-      page,
-      limit: 20,
-    });
 
-    setItems(res.items);
-    setTotalPages(res.totalPages);
+    const res = advancedFilter
+      ? await getSmsHistoryAdvanced({
+          filter: advancedFilter,
+          page,
+          limit: 20,
+        })
+      : await getSmsHistory({
+          campaignId,
+          page,
+          limit: 20,
+        });
+
+    setItems(res.items || []);
+    setTotalPages(res.totalPages || 1);
     setLoading(false);
   };
 
-  const toggle = (id) => {
-    setSelected((prev) => {
-      const n = new Set(prev);
-      n.has(id) ? n.delete(id) : n.add(id);
-      return n;
-    });
-  };
+  useEffect(() => {
+    load();
+  }, [campaignId, page, advancedFilter]);
 
+  /* ---------------------------
+   * RETRY FAILED
+   * --------------------------- */
   const retry = async () => {
-    await retryFailedSms([...selected]);
-    setSelected(new Set());
+    if (!selectedIds.size) return;
+
+    await retryFailedSms([...selectedIds]);
+    clearSelected();
     load();
   };
 
+  /* ---------------------------
+   * COLUMNS
+   * --------------------------- */
+  const columns = useMemo(
+    () =>
+      smsHistoryColumns({
+        highlight: search,
+        selectedIds,
+        onToggle: toggleSelected,
+      }),
+    [search, selectedIds]
+  );
+
+  /* ---------------------------
+   * RENDER
+   * --------------------------- */
   return (
-    <div className="space-y-4">
-      <h2 className="text-2xl font-semibold">SMS History</h2>
+    <div className="max-w-7xl mx-auto px-6 space-y-6">
+      {/* HEADER */}
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-semibold">SMS History</h1>
 
-      {/* FILTERS */}
-      <div className="grid grid-cols-5 gap-2 bg-white p-3 rounded shadow text-sm">
-        <select
-          className="border px-2 py-1 rounded"
-          value={brand}
-          onChange={(e) => setBrand(e.target.value)}
-        >
-          <option value="">All brands</option>
-          {SMS_BRANDS.map((b) => (
-            <option key={b.key} value={b.key}>
-              {b.label}
-            </option>
-          ))}
-        </select>
+        <div className="flex gap-2">
+          <button
+            onClick={() => exportSmsHistoryCsv({ campaignId })}
+            className="bg-blue-600 text-white px-4 py-2 rounded"
+          >
+            Export Excel
+          </button>
 
-        <select
-          className="border px-2 py-1 rounded"
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-        >
-          <option value="">All statuses</option>
-          <option value="sent">Sent</option>
-          <option value="failed">Failed</option>
-        </select>
-
-        <input
-          type="date"
-          className="border px-2 py-1 rounded"
-          value={from}
-          onChange={(e) => setFrom(e.target.value)}
-        />
-        <input
-          type="date"
-          className="border px-2 py-1 rounded"
-          value={to}
-          onChange={(e) => setTo(e.target.value)}
-        />
-
-        <button
-          onClick={() => exportSmsHistoryCsv({ brand, status, from, to })}
-          className="bg-blue-600 text-white rounded px-3"
-        >
-          Export CSV
-        </button>
+          <button
+            disabled={!selectedIds.size}
+            onClick={retry}
+            className="bg-orange-600 text-white px-4 py-2 rounded disabled:opacity-40"
+          >
+            Retry failed ({selectedIds.size})
+          </button>
+        </div>
       </div>
-
-      {/* ACTIONS */}
-      <button
-        disabled={selected.size === 0}
-        onClick={retry}
-        className="bg-orange-600 text-white px-4 py-2 rounded disabled:opacity-50"
-      >
-        Retry failed ({selected.size})
-      </button>
 
       {/* TABLE */}
-      <div className="bg-white rounded shadow overflow-x-auto">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th />
-              <th className="text-start">Date</th>
-              <th className="text-start">Brand</th>
-              <th className="text-start">User</th>
-              <th className="text-start">Phone</th>
-              <th className="text-start">Status</th>
-              <th className="text-start">Error</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((i) => (
-              <tr key={i._id} className="border-t">
-                <td>
-                  {i.status === "failed" && (
-                    <input
-                      type="checkbox"
-                      checked={selected.has(i._id)}
-                      onChange={() => toggle(i._id)}
-                    />
-                  )}
-                </td>
-                <td>{new Date(i.createdAt).toLocaleString()}</td>
-                <td>{i.brandLabel}</td>
-                <td>
-                  {i.userId ? `${i.userId.firstName} ${i.userId.lastName}` : ""}
-                </td>
-                <td>{i.phone}</td>
-                <td
-                  className={
-                    i.status === "sent" ? "text-green-600" : "text-red-600"
-                  }
-                >
-                  {i.status}
-                </td>
-                <td className="text-xs text-red-500">{i.error || ""}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+      <DataTableView
+        enableSearch
+        enableColumnFilters
+        enableAdvancedFilter
+        enablePagination
+        /* SEARCH */
+        search={search}
+        onSearchChange={setSearch}
+        onSearchClear={() => setSearch("")}
+        onOpenAdvanced={openAdvanced}
+        /* ADVANCED */
+        advancedOpen={advancedOpen}
+        advancedFilter={advancedFilter}
+        onCloseAdvanced={closeAdvanced}
+        onApplyAdvanced={(f) => {
+          setAdvancedFilter(f);
+          closeAdvanced();
+        }}
+        /* COLUMN FILTERS (client-side) */
+        columnFilters={columnFilters}
+        onRemoveColumnFilter={removeColumnFilter}
+        /* TABLE */
+        tableProps={{
+          loading,
+          data: items,
+          columns,
+          filters: columnFilters,
+          onFilterChange: setColumnFilter,
+        }}
+        /* PAGINATION */
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+      />
     </div>
   );
 }

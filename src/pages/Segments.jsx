@@ -168,7 +168,14 @@ export default function Segments() {
               <div className="text-white">{s.name}</div>
               <div className="text-xs text-gray-400">{s.count} users</div>
             </div>
-
+            <button
+              onClick={() =>
+                navigate(`/sms-campaigns?segmentId=${s._id}`)
+              }
+              className="px-4 py-2 rounded-lg bg-green-600 text-white"
+            >
+              Send SMS to segment
+            </button>
             <button
               onClick={() => {
                 if (!confirm(`Delete segment "${s.name}"?`)) return;

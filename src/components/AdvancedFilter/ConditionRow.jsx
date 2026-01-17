@@ -1,6 +1,8 @@
 // src/components/AdvancedFilter/ConditionRow.jsx
 import { useEffect, useState } from "react";
 import { USER_ADVANCED_FILTER_FIELDS } from "../../config/userAdvancedFilterFields";
+import { SMS_HISTORY_ADVANCED_FILTER_FIELDS } from "../../config/smsHistoryAdvancedFilterFields";
+
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 const distinctCache = new Map();

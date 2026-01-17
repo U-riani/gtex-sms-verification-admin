@@ -55,7 +55,7 @@ export default function UserDetails() {
               <span className="font-medium">Name:</span> {user.firstName}
             </p>
             <p>
-              <span className="font-medium">Lastname:</span> {user.lastName}
+              <span className="font-medium">Last Name:</span> {user.lastName}
             </p>
           </div>
           <p>
@@ -65,7 +65,7 @@ export default function UserDetails() {
             <span className="font-medium">Gender:</span> {user.gender}
           </p>
           <p>
-            <span className="font-medium">Phone:</span> {user.phone}
+            <span className="font-medium">Phone:</span> {user.phone.full}
           </p>
           <p>
             <span className="font-medium">Email:</span> {user.email || "-"}

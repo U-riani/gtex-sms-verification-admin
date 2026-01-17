@@ -1,6 +1,8 @@
-import { useMemo, useState, useEffect, useLayoutEffect } from "react";
-import { OPERATORS } from "../constanst/operators";
+// src/components/TableFilterDropdown.jsx
+import { useMemo, useState, useEffect, useLayoutEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { OPERATORS } from "../constanst/operators";
+import ConditionRow from "./ConditionRow";
 
 const boolLabel = (v) => (v === true ? "YES" : v === false ? "NO" : "(empty)");
 
@@ -14,18 +16,33 @@ export default function TableFilterDropdown({
   onChange,
   onClose,
 }) {
-  const isDate = columnType === "date";
+  /* ---------------------------
+   * UI STATE
+   * --------------------------- */
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState([]);
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [baseLogic, setBaseLogic] = useState(value?.baseLogic ?? "AND");
 
-  const [operator, setOperator] = useState(() => {
-    if (value?.operator) return value.operator;
-    if (columnType === "enum") return "in";
-    if (columnType === "boolean") return "equals";
-    return "contains";
-  });
+  const DROPDOWN_WIDTH = 260;
+
+  const promotedRef = useRef(false);
+
+
+  const [style, setStyle] = useState({});
+  const opensLeft = style.left > window.innerWidth / 2;
+  const advancedStyle =
+    style.left != null
+      ? {
+          position: "fixed",
+          zIndex: 51,
+          top: style.top,
+          left: opensLeft
+            ? style.left - DROPDOWN_WIDTH
+            : style.left + DROPDOWN_WIDTH,
+          width: DROPDOWN_WIDTH,
+        }
+      : {};
 
   const operators =
     columnType === "enum"
@@ -36,165 +53,194 @@ export default function TableFilterDropdown({
       ? OPERATORS.date
       : OPERATORS.text;
 
-  const [touched, setTouched] = useState(false);
-  const [style, setStyle] = useState({});
+  const defaultOperator =
+    value?.conditions?.[0]?.operator ??
+    (columnType === "enum"
+      ? "in"
+      : columnType === "boolean"
+      ? "equals"
+      : columnType === "date"
+      ? "on"
+      : "contains");
 
-  // Build uniqueValues with correct types
+  const [operator, setOperator] = useState(defaultOperator);
+
+  /* ---------------------------
+   * CONDITIONS (single source)
+   * --------------------------- */
+  const [conditions, setConditions] = useState(() => {
+    if (value?.conditions?.length) {
+      return structuredClone(value.conditions);
+    }
+
+    return [
+      {
+        operator: defaultOperator,
+        values: [],
+        logic: "AND",
+      },
+    ];
+  });
+
+  console.log("[TFD initial conditions]", conditions);
+
+  /* ---------------------------
+   * VALUES
+   * --------------------------- */
   const uniqueValues = useMemo(() => {
-    const values = data.flatMap((r) => {
+    const vals = data.flatMap((r) => {
       const v = r[columnKey];
       if (v == null) return [];
-
-      if (columnType === "boolean") return [Boolean(v)]; // keep boolean
-
+      if (columnType === "boolean") return [Boolean(v)];
       if (Array.isArray(v)) return v.map(String);
       return [String(v)];
     });
 
-    // unique
-    return [...new Set(values)];
+    return [...new Set(vals)];
   }, [data, columnKey, columnType]);
 
-  // Visible values with safe search handling
   const visibleValues = useMemo(() => {
-    if (!search) return uniqueValues;
-
-    // for boolean: searching makes no sense, just ignore search
-    if (columnType === "boolean") return uniqueValues;
-
+    if (!search || columnType === "boolean") return uniqueValues;
     const q = search.toLowerCase();
     return uniqueValues.filter((v) => String(v).toLowerCase().includes(q));
   }, [uniqueValues, search, columnType]);
 
-  // Restore selected values from current filter
+  /* ---------------------------
+   * SYNC FROM FILTER VALUE
+   * --------------------------- */
   useEffect(() => {
-    if (!value?.values) {
-      setSelected(uniqueValues);
+    if (!value?.conditions?.[0]?.values) {
+      setSelected([]);
       return;
     }
+
+    const raw = value.conditions[0].values;
 
     if (columnType === "boolean") {
-      // values must be booleans in filter state
-      setSelected(value.values.map((x) => Boolean(x)));
+      setSelected(raw.map(Boolean));
       return;
     }
 
-    // Map normalized string values back to raw UI values
     const map = new Map(uniqueValues.map((v) => [String(v).toLowerCase(), v]));
+    console.log("[TFD sync from value]", value);
+
     setSelected(
-      (value.values ?? [])
-        .map((v) => map.get(String(v).toLowerCase()))
-        .filter((v) => v != null)
+      raw.map((v) => map.get(String(v).toLowerCase())).filter(Boolean)
     );
   }, [value, uniqueValues, columnType]);
 
-  // Keep operator synced
-  useEffect(() => {
-    if (value?.operator) setOperator(value.operator);
-  }, [value]);
+  /* ---------------------------
+   * SIMPLE UI → CONDITION[0]
+   * --------------------------- */
 
-  // Select all logic
+  /* ---------------------------
+   * HELPERS
+   * --------------------------- */
   const allSelected =
-    visibleValues.length > 0 &&
-    visibleValues.every((v) => selected.some((s) => s === v));
+    visibleValues.length && visibleValues.every((v) => selected.includes(v));
 
   const toggleAll = () => {
-    setSelected((prev) =>
+    setSelected((p) =>
       allSelected
-        ? prev.filter((v) => !visibleValues.includes(v))
-        : [...new Set([...prev, ...visibleValues])]
+        ? p.filter((v) => !visibleValues.includes(v))
+        : [...new Set([...p, ...visibleValues])]
     );
   };
 
-  const apply = () => {
-    if (columnType === "date") {
-      const values =
-        operator === "between"
-          ? [
-              dateFrom ? new Date(dateFrom).getTime() : null,
-              dateTo ? new Date(dateTo).getTime() : null,
-            ].filter(Boolean)
-          : dateFrom
-          ? [new Date(dateFrom).getTime()]
-          : [];
-
-      onChange({
-        type: "date",
-        operator,
-        values,
-      });
-
-      onClose?.();
-      return;
-    }
-
-    // existing logic for others
+  const normalizeValues = (vals) => {
+    if (columnType === "boolean") return vals.map(Boolean);
+    return vals.map((v) => String(v).toLowerCase());
   };
 
-  // Positioning
+  /* ---------------------------
+   * APPLY
+   * --------------------------- */
+  const apply = () => {
+    const payload = {
+      type: columnType,
+      base: {
+        operator,
+        values: normalizeValues(selected),
+      },
+      baseLogic,
+      conditions: advancedOpen
+        ? conditions
+            .filter((c) => c.values?.length)
+            .map((c) => ({
+              operator: c.operator,
+              values: normalizeValues(c.values),
+              logic: c.logic ?? "AND",
+            }))
+        : [],
+    };
+
+    console.log("[TFD APPLY PAYLOAD]", payload);
+
+    onChange(payload);
+    onClose?.();
+  };
+
+  /* ---------------------------
+   * POSITIONING
+   * --------------------------- */
+  // const [style, setStyle] = useState({});
+  // useLayoutEffect(() => {
+  //   const th = document.querySelector(`th[data-col="${anchorKey}"]`);
+  //   if (!th) return;
+
+  //   const r = th.getBoundingClientRect();
+  //   setStyle({
+  //     position: "fixed",
+  //     zIndex: 50,
+  //     top: r.bottom + 4,
+  //     left: Math.min(r.left, window.innerWidth - 260),
+  //     minWidth: 240,
+  //   });
+  // }, [anchorKey]);
+  /* ---------------------------
+   * POSITIONING (SMART LEFT / RIGHT)
+   * --------------------------- */
+
   useLayoutEffect(() => {
-    const updatePosition = () => {
-      const th = document.querySelector(`th[data-col="${anchorKey}"]`);
-      if (!th) return;
+    const th = document.querySelector(`th[data-col="${anchorKey}"]`);
+    if (!th) return;
 
-      const thRect = th.getBoundingClientRect();
-      const width = Math.max(thRect.width, 220);
+    const rect = th.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
 
-      setStyle({
-        position: "fixed",
-        zIndex: 50,
-        top: thRect.bottom + 4,
-        left: Math.min(thRect.left, window.innerWidth - width - 8),
-        minWidth: width,
-      });
-    };
+    // try opening to the right first
+    const rightX = rect.left;
+    const wouldOverflowRight = rightX + DROPDOWN_WIDTH > viewportWidth;
 
-    updatePosition();
+    const left = wouldOverflowRight
+      ? Math.max(0, rect.right - DROPDOWN_WIDTH)
+      : Math.min(rightX, viewportWidth - DROPDOWN_WIDTH);
 
-    const container = containerRef.current;
-    window.addEventListener("scroll", updatePosition, { passive: true });
-    container?.addEventListener("scroll", updatePosition, { passive: true });
-    window.addEventListener("resize", updatePosition);
-
-    return () => {
-      window.removeEventListener("scroll", updatePosition);
-      container?.removeEventListener("scroll", updatePosition);
-      window.removeEventListener("resize", updatePosition);
-    };
-  }, [anchorKey, containerRef]);
-
-  useEffect(() => {
-    setTouched(false);
-    setSearch("");
+    setStyle({
+      position: "fixed",
+      zIndex: 50,
+      top: rect.bottom,
+      left,
+      width: DROPDOWN_WIDTH,
+    });
   }, [anchorKey]);
 
-  const searchDisabled =
-    columnType === "boolean" ||
-    operator === "empty" ||
-    operator === "not_empty";
-
-  useEffect(() => {
-    if (columnType !== "date" || !value?.values) return;
-
-    if (value.values[0]) {
-      setDateFrom(new Date(value.values[0]).toISOString().slice(0, 10));
-    }
-    if (value.values[1]) {
-      setDateTo(new Date(value.values[1]).toISOString().slice(0, 10));
-    }
-  }, [value, columnType]);
-
+  /* ---------------------------
+   * RENDER
+   * --------------------------- */
   return createPortal(
     <div
       style={style}
-      className="table-filter-dropdown flex flex-col justify-between w-56 h-70 bg-slate-800 border rounded p-2"
+      data-filter-panel
+      className="table-filter-dropdown bg-slate-800 border rounded p-2 w-60"
       onClick={(e) => e.stopPropagation()}
     >
-      <div>
+      {/* SIMPLE FILTER */}
+      <div className="flex gap-2 mb-2">
         <select
           value={operator}
           onChange={(e) => setOperator(e.target.value)}
-          className="w-full mb-2 px-2 py-1 rounded bg-slate-900 text-slate-100"
+          className="flex-1 bg-slate-900 text-white px-2 py-1 rounded"
         >
           {operators.map((op) => (
             <option key={op.value} value={op.value}>
@@ -203,77 +249,174 @@ export default function TableFilterDropdown({
           ))}
         </select>
 
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search..."
-          disabled={searchDisabled}
-          className="w-full mb-2 px-2 py-1 rounded bg-slate-900 text-slate-100 disabled:opacity-50"
-        />
-        {columnType === "date" && (
-          <div className="flex flex-col gap-2">
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="px-2 py-1 rounded bg-slate-900 text-slate-100"
-            />
-
-            {operator === "between" && (
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="px-2 py-1 rounded bg-slate-900 text-slate-100"
-              />
-            )}
-          </div>
-        )}
-
-        <label className="flex gap-2 border-b border-slate-900 mb-1 pb-1">
-          <input
-            type="checkbox"
-            checked={allSelected}
-            onChange={() => {
-              setTouched(true);
-              toggleAll();
-            }}
-            disabled={operator === "empty" || operator === "not_empty"}
-          />
-          Select All
-        </label>
-
-        <div className="max-h-40 overflow-auto">
-          {visibleValues.map((v, idx) => (
-            <label key={`${String(v)}-${idx}`} className="flex gap-2">
-              <input
-                type="checkbox"
-                checked={selected.some((s) => s === v)}
-                onChange={() => {
-                  setTouched(true);
-                  setSelected((p) =>
-                    p.includes(v) ? p.filter((x) => x !== v) : [...p, v]
-                  );
-                }}
-                disabled={operator === "empty" || operator === "not_empty"}
-              />
-              {columnType === "boolean" ? boolLabel(v) : v || "(empty)"}
-            </label>
-          ))}
-        </div>
+        <button
+          onClick={() => setAdvancedOpen((v) => !v)}
+          className="px-2 bg-slate-700 rounded hover:bg-slate-600"
+          title="Advanced"
+        >
+          {advancedOpen ? "▴" : "▾"}
+        </button>
       </div>
 
-      <div className="flex justify-end gap-2 mt-2">
-        <button
-          onClick={onClose}
-          className="bg-gray-700 px-2 rounded text-slate-300 pb-0.5"
+      <input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search…"
+        disabled={columnType === "boolean"}
+        className="w-full mb-2 px-2 py-1 bg-slate-900 text-white rounded"
+      />
+
+      <label className="flex gap-2 border-b pb-1 mb-1">
+        <input type="checkbox" checked={allSelected} onChange={toggleAll} />
+        Select all
+      </label>
+
+      <div className="max-h-40 overflow-auto">
+        {visibleValues.map((v, i) => (
+          <label key={i} className="flex gap-2">
+            <input
+              type="checkbox"
+              checked={selected.includes(v)}
+              onChange={() =>
+                setSelected((p) =>
+                  p.includes(v) ? p.filter((x) => x !== v) : [...p, v]
+                )
+              }
+            />
+            {columnType === "boolean" ? boolLabel(v) : v || "(empty)"}
+          </label>
+        ))}
+      </div>
+      {advancedOpen &&
+        createPortal(
+          <div
+            style={advancedStyle}
+            data-filter-panel
+            className="bg-slate-800 border rounded p-3 space-y-2 max-h-90 overflow-y-auto flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* BASE LOGIC */}
+            <div className="flex justify-center">
+              <select
+                value={baseLogic}
+                onChange={(e) => setBaseLogic(e.target.value)}
+                className="bg-slate-700 text-white text-xs px-2 py-1 rounded"
+              >
+                <option value="AND">AND</option>
+                <option value="OR">OR</option>
+              </select>
+            </div>
+
+            {/* CONDITIONS */}
+            {conditions.map((cond, idx) => (
+              <div
+                key={idx}
+                className="w-full flex flex-col justify-center items-center gap-2"
+              >
+                <ConditionRow
+                  key={idx}
+                  operators={operators}
+                  value={cond}
+                  onChange={(v) =>
+                    setConditions((c) => c.map((x, i) => (i === idx ? v : x)))
+                  }
+                  onRemove={
+                    idx > 0
+                      ? () =>
+                          setConditions((c) => c.filter((_, i) => i !== idx))
+                      : undefined
+                  }
+                />
+                {idx < conditions.length - 1 && (
+                  // <select
+                  //   value={logic}
+                  //   onChange={(e) => setLogic(e.target.value)}
+                  //   className="w-full bg-slate-900 text-white px-2 py-1 rounded"
+                  // >
+                  //   <option value="AND">AND</option>
+                  //   <option value="OR">OR</option>
+                  // </select>
+                  <div className="inline-flex items-center gap-0.5 rounded-full border border-slate-600 bg-slate-800/50 px-1 py-0.5 text-xs">
+                    {["AND", "OR"].map((op) => {
+                      const active = conditions[idx + 1]?.logic === op;
+
+                      return (
+                        <button
+                          key={op}
+                          type="button"
+                          onClick={() =>
+                            setConditions((c) =>
+                              c.map((x, i) =>
+                                i === idx + 1 ? { ...x, logic: op } : x
+                              )
+                            )
+                          }
+                          className={`px-3 py-1 rounded-full transition-colors ${
+                            active
+                              ? "bg-slate-600 text-white"
+                              : "text-slate-400 hover:text-slate-200 hover:bg-slate-700/40"
+                          }`}
+                        >
+                          {op}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))}
+            {/* ADD CONDITION */}
+            <button
+              onClick={() =>
+                setConditions((c) => [
+                  ...c,
+                  { operator: defaultOperator, values: [], logic: "AND" },
+                ])
+              }
+              className="w-full text-xs bg-slate-700 hover:bg-slate-600 rounded py-1"
+            >
+              + Add condition
+            </button>
+            {/* LOGIC BETWEEN CONDITIONS */}
+          </div>,
+          document.body
+        )}
+
+      {/* ADVANCED */}
+      {/* {advancedOpen && (
+        <div
+          className={`mt-3 border-t pt-2 space-y-2 ${
+            opensLeft ? "origin-top-right" : "origin-top-left"
+          }`}
         >
+          <ConditionRow
+            operators={operators}
+            value={conditions[0]}
+            onChange={(v) => setConditions((c) => [v, ...c.slice(1)])}
+          />
+
+          <select
+            value={logic}
+            onChange={(e) => setLogic(e.target.value)}
+            className="w-full bg-slate-900 text-white px-2 py-1 rounded"
+          >
+            <option value="AND">AND</option>
+            <option value="OR">OR</option>
+          </select>
+
+          <ConditionRow
+            operators={operators}
+            value={conditions[1] ?? { operator, values: [] }}
+            onChange={(v) => setConditions((c) => [c[0], v])}
+          />
+        </div>
+      )} */}
+
+      <div className="flex justify-end gap-2 mt-3">
+        <button onClick={onClose} className="px-2 bg-gray-700 rounded">
           Cancel
         </button>
-        <button
-          className="bg-blue-600 px-2 rounded text-slate-300 pb-0.5"
-          onClick={apply}
-        >
+        <button onClick={apply} className="px-2 bg-blue-600 rounded">
           Apply
         </button>
       </div>

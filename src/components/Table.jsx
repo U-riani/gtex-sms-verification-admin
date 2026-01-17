@@ -13,6 +13,70 @@ const normalizeEnum = (value) => {
   if (value == null) return [];
   return [String(value)];
 };
+
+const runFilter = (row, key, filter) => {
+  console.log("[runFilter]", {
+    column: key,
+    rowValue: row[key],
+    normalized: normalizeCellValue(row[key], filter.type),
+    filter,
+  });
+  const cell = normalizeCellValue(row[key], filter.type);
+
+  // BASE
+  const baseFn = FILTER_OPERATORS[filter.type]?.[filter.base?.operator];
+  const baseResult =
+    filter.base?.values?.length && baseFn
+      ? baseFn(cell, filter.base.values)
+      : true;
+
+  if (!filter.conditions?.length) {
+    return baseResult;
+  }
+
+  // ADVANCED (combined separately)
+  let advancedResult = null;
+
+  for (let i = 0; i < filter.conditions.length; i++) {
+    const cond = filter.conditions[i];
+    const fn = FILTER_OPERATORS[filter.type]?.[cond.operator];
+    if (!fn) continue;
+
+    const condResult = fn(cell, cond.values);
+
+    if (advancedResult === null) {
+      advancedResult = condResult;
+    } else {
+      const joinLogic = cond.logic ?? "AND"; // 👈 logic belongs to THIS condition
+      advancedResult =
+        joinLogic === "OR"
+          ? advancedResult || condResult
+          : advancedResult && condResult;
+    }
+  }
+
+  // if there were no valid conditions
+  if (advancedResult === null) {
+    advancedResult = true;
+  }
+
+  const finalResult =
+    filter.baseLogic === "OR"
+      ? baseResult || advancedResult
+      : baseResult && advancedResult;
+
+  console.log("[runFilter result]", {
+    column: key,
+    baseResult,
+    advancedResult,
+    finalResult,
+  });
+  // COMBINE BASE + ADVANCED
+  return filter.baseLogic === "OR"
+    ? baseResult || advancedResult
+    : baseResult && advancedResult;
+};
+
 const FILTER_OPERATORS = {
   text: {
     contains: (cell, selected) =>
@@ -23,6 +87,11 @@ const FILTER_OPERATORS = {
     not_equals: (cell, selected) => selected.every((s) => !cell.includes(s)),
     empty: (cell) => cell.length === 0 || cell.every((v) => v === ""),
     not_empty: (cell) => cell.some((v) => v !== ""),
+    starts_with: (cell, selected) =>
+      selected.some((s) => cell.some((c) => c.startsWith(s))),
+
+    ends_with: (cell, selected) =>
+      selected.some((s) => cell.some((c) => c.endsWith(s))),
   },
 
   enum: {
@@ -72,7 +141,7 @@ export default function Table({
   onToggleRow,
   onToggleAll,
   onSetSelectedIds,
-  filters,
+  filters = {},
   onFilterChange,
   openFilterRequest,
   onFilterOpened,
@@ -92,37 +161,17 @@ export default function Table({
     data.filter((row) =>
       Object.entries(filters)
         .filter(([k]) => k !== columnKey)
-        .every(([k, f]) => {
-          const fn = FILTER_OPERATORS[f.type]?.[f.operator];
-          if (!fn) return true;
-          return fn(normalizeCellValue(row[k], f.type), f.values);
-        })
+        .every(([k, filter]) => runFilter(row, k, filter))
     );
 
   const filteredData = useMemo(() => {
-    let result = [...data];
+    if (!Object.keys(filters).length) return data;
 
-    Object.entries(filters).forEach(([key, filter]) => {
-      const { type, operator, values } = filter;
-
-      const fn = FILTER_OPERATORS[type]?.[operator];
-      if (!fn) {
-        console.warn("Invalid filter operator:", filter);
-        return;
-      }
-
-      const normalizedSelected =
-        type === "text" || type === "enum"
-          ? values.map((v) => String(v).toLowerCase())
-          : values;
-
-      result = result.filter((row) => {
-        const cell = normalizeCellValue(row[key], type);
-        return fn(cell, normalizedSelected);
-      });
-    });
-
-    return result;
+    return data.filter((row) =>
+      Object.entries(filters).every(([key, filter]) =>
+        runFilter(row, key, filter)
+      )
+    );
   }, [data, filters]);
 
   const sortedData = [...filteredData];
@@ -156,7 +205,7 @@ export default function Table({
 
   useEffect(() => {
     const close = (e) => {
-      if (e.target.closest(".table-filter-dropdown")) return;
+      if (e.target.closest("[data-filter-panel]")) return;
       if (e.target.closest("[data-filter-btn]")) return;
 
       setActiveFilter(null);
@@ -209,7 +258,7 @@ export default function Table({
     () => Object.fromEntries(columns.map((c) => [c.key, c.type || "text"])),
     [columns]
   );
-  console.log(filters[activeFilter], ">>> activeFilter");
+
   return (
     <div
       ref={tableScrollRef}
@@ -229,18 +278,10 @@ export default function Table({
               columnKey={activeFilter}
               columnType={columnTypeMap[activeFilter] ?? "text"}
               data={getFilteredDataForColumn(activeFilter)}
-              value={
-                filters[activeFilter]
-                  ? {
-                      values: filters[activeFilter].values ?? [],
-                      operator: filters[activeFilter].operator,
-                    }
-                  : undefined
-              }
+              value={filters[activeFilter]}
               onChange={(payload) => {
                 onFilterChange?.(activeFilter, payload);
                 setActiveFilter(null);
-                console.log(payload, ">>> payload");
               }}
               onClose={() => setActiveFilter(null)}
             />

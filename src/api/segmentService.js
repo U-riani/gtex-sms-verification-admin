@@ -15,6 +15,10 @@ export const addUsersToSegment = ({ segmentId, userIds }) =>
     body: JSON.stringify({ userIds }),
   });
 
+export function getSegmentById(id) {
+  return adminFetch(`/admin/segments/${id}`);
+}
+
 export const deleteSegment = (id) =>
   adminFetch(`/admin/segments/${id}`, {
     method: "DELETE",

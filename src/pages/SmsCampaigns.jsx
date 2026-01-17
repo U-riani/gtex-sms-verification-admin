@@ -1,54 +1,236 @@
-import { useEffect, useState } from "react";
-import { getSmsCampaigns } from "../api/adminSmsCampaignService";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+import { getSmsTemplates } from "../api/adminSmsTemplateService";
+import { getSegments } from "../api/segmentService";
+import { startSmsCampaign, getSmsCampaigns } from "../api/smsCampaignService";
+
+import { useSmsCampaignStore } from "../store/smsCampaignStore";
+import DataTableView from "../components/DataTableView";
+import { smsCampaignColumns } from "../config/smsCampaignColumns.jsx";
 
 export default function SmsCampaigns() {
-  const [campaigns, setCampaigns] = useState([]);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    getSmsCampaigns().then((res) => setCampaigns(res.campaigns));
-  }, []);
+  /* ---------------------------
+   * UI STATE (same pattern)
+   * --------------------------- */
+  const [search, setSearch] = useState("");
+  const [advancedFilter, setAdvancedFilter] = useState(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [filters, setFilters] = useState({});
 
+  /* ---------------------------
+   * CAMPAIGN STORE
+   * --------------------------- */
+  const {
+    showStart,
+    openStart,
+    closeStart,
+    selectedTemplateId,
+    selectedSegmentId,
+    setTemplate,
+    setSegment,
+    reset,
+  } = useSmsCampaignStore();
+
+  /* ---------------------------
+   * DATA
+   * --------------------------- */
+  const { data: templates = [] } = useQuery({
+    queryKey: ["sms-templates"],
+    queryFn: getSmsTemplates,
+    select: (r) => r.templates ?? [],
+  });
+
+  const { data: segments = [] } = useQuery({
+    queryKey: ["segments"],
+    queryFn: getSegments,
+  });
+
+  const { data: campaigns = [], isLoading } = useQuery({
+    queryKey: ["sms-campaigns"],
+    queryFn: getSmsCampaigns,
+    select: (r) => r.campaigns ?? [],
+  });
+
+  /* ---------------------------
+   * FILTERED DATA (IMPORTANT)
+   * --------------------------- */
+  const normalizedCampaigns = useMemo(() => {
+    return campaigns.map((c) => ({
+      ...c,
+
+      templateName: c.templateSnapshot?.name ?? "",
+      templateContent: c.templateSnapshot?.content ?? "",
+
+      segmentName: c.segmentSnapshot?.name ?? "",
+      segmentUsers: c.segmentSnapshot?.userCount ?? 0,
+
+      sent: c.stats?.sent ?? 0,
+      failed: c.stats?.failed ?? 0,
+    }));
+  }, [campaigns]);
+
+  const filteredCampaigns = useMemo(() => {
+    if (!search.trim()) return normalizedCampaigns;
+
+    const q = search.toLowerCase();
+
+    return normalizedCampaigns.filter((c) =>
+      [c.templateName, c.templateContent, c.segmentName, c.status]
+        .filter(Boolean)
+        .some((v) => String(v).toLowerCase().includes(q))
+    );
+  }, [normalizedCampaigns, search]);
+
+  /* ---------------------------
+   * COLUMNS (with highlight)
+   * --------------------------- */
+  const columns = useMemo(
+    () =>
+      smsCampaignColumns({
+        highlight: search,
+        onDetails: (id) => navigate(`/sms-campaigns/${id}`),
+      }),
+    [navigate, search]
+  );
+
+  /* ---------------------------
+   * START CAMPAIGN
+   * --------------------------- */
+  const startMut = useMutation({
+    mutationFn: startSmsCampaign,
+    onSuccess: () => {
+      queryClient.invalidateQueries(["sms-campaigns"]);
+      reset();
+    },
+  });
+
+  const start = () => {
+    if (!selectedTemplateId || !selectedSegmentId) return;
+
+    startMut.mutate({
+      templateId: selectedTemplateId,
+      segmentId: selectedSegmentId,
+    });
+  };
+
+  /* ---------------------------
+   * RENDER
+   * --------------------------- */
   return (
-    <div className="space-y-4">
-      <h2 className="text-2xl font-semibold">SMS Campaigns</h2>
-
-      <div className="bg-white rounded shadow overflow-x-auto">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="text-start">Date</th>
-              <th className="text-start">Brand</th>
-              <th className="text-start">Total</th>
-              <th className="text-start">Sent</th>
-              <th className="text-start">Failed</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {campaigns.map((c) => (
-              <tr key={c._id} className="border-t">
-                <td>{new Date(c.createdAt).toLocaleString()}</td>
-                <td>{c.brand}</td>
-                <td>{c.total}</td>
-                <td className="text-green-600">{c.sent}</td>
-                <td className="text-red-600">{c.failed}</td>
-                <td>
-                  <button
-                    className="text-blue-600"
-                    onClick={() =>
-                      navigate(`/sms-history?campaignId=${c._id}`)
-                    }
-                  >
-                    View
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <div className="max-w-5xl mx-auto px-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-semibold">SMS Campaigns</h1>
+        <button
+          onClick={openStart}
+          className="bg-green-700/70 px-4 py-2 rounded-xl text-white"
+        >
+          Start Campaign
+        </button>
       </div>
+
+      {/* START CAMPAIGN */}
+      {showStart && (
+        <div className="bg-white/80 border rounded-xl p-4 space-y-4">
+          <div>
+            <label className="text-sm font-medium">Template</label>
+            <select
+              value={selectedTemplateId ?? ""}
+              onChange={(e) => setTemplate(e.target.value || null)}
+              className="w-full border rounded px-3 py-2"
+            >
+              <option value="">Select template</option>
+              {templates.map((t) => (
+                <option key={t._id} value={t._id}>
+                  {t.name} ({t.brand})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Segment</label>
+            <select
+              value={selectedSegmentId ?? ""}
+              onChange={(e) => setSegment(e.target.value || null)}
+              className="w-full border rounded px-3 py-2"
+            >
+              <option value="">Select segment</option>
+              {segments.map((s) => (
+                <option key={s._id} value={s._id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <button onClick={closeStart} className="text-gray-500">
+              Cancel
+            </button>
+            <button
+              onClick={start}
+              disabled={startMut.isLoading}
+              className="bg-green-600 px-4 py-2 rounded text-white disabled:opacity-40"
+            >
+              {startMut.isLoading ? "Sending…" : "Start"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* CAMPAIGN HISTORY */}
+      <DataTableView
+        /* feature flags */
+        enableSearch
+        enableAdvancedFilter={false}
+        enableColumnFilters
+        /* SEARCH */
+        search={search}
+        onSearchChange={setSearch}
+        onSearchClear={() => setSearch("")}
+        onOpenAdvanced={() => setAdvancedOpen(true)}
+        /* ADVANCED FILTER (disabled but wired) */
+        advancedOpen={advancedOpen}
+        advancedFilter={advancedFilter}
+        onCloseAdvanced={() => setAdvancedOpen(false)}
+        onApplyAdvanced={(f) => {
+          setAdvancedFilter(f);
+          setAdvancedOpen(false);
+        }}
+        presets={[]}
+        selectedPresetId={null}
+        onSavePreset={() => {}}
+        onSelectPreset={() => {}}
+        onDeletePreset={() => {}}
+        /* ACTIVE FILTERS */
+        columnFilters={filters}
+        onRemoveColumnFilter={(key) =>
+          setFilters((prev) => {
+            const next = { ...prev };
+            delete next[key];
+            return next;
+          })
+        }
+        onEditColumnFilter={() => {}}
+        onRemoveAdvancedCondition={() => {}}
+        onRemoveAdvancedGroup={() => {}}
+        onEditAdvancedFilter={() => setAdvancedOpen(true)}
+        /* TABLE */
+        tableProps={{
+          loading: isLoading,
+          columns,
+          data: filteredCampaigns,
+          filters,
+          onFilterChange: (key, payload) =>
+            setFilters((prev) => ({ ...prev, [key]: payload })),
+          onRowClick: (row) => navigate(`/sms-campaigns/${row._id}`),
+        }}
+      />
     </div>
   );
 }
