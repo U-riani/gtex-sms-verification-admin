@@ -19,6 +19,7 @@ export default function AdvancedFilterModal({
   initialFilter,
   onApply,
   onClose,
+  fields,
 
   presets,
   selectedPresetId,
@@ -157,6 +158,7 @@ export default function AdvancedFilterModal({
                   index={gi}
                   filter={filter}
                   setFilter={setFilter}
+                  fields={fields}
                 />
               ))}
             </SortableContext>

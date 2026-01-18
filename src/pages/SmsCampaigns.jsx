@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
+import { useEffect } from "react";
 
 import { getSmsTemplates } from "../api/adminSmsTemplateService";
 import { getSegments } from "../api/segmentService";
@@ -13,6 +15,10 @@ import { smsCampaignColumns } from "../config/smsCampaignColumns.jsx";
 export default function SmsCampaigns() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [params] = useSearchParams();
+
+  const templateIdFromUrl = params.get("templateId");
+  const segmentIdFromUrl = params.get("segmentId");
 
   /* ---------------------------
    * UI STATE (same pattern)
@@ -21,7 +27,7 @@ export default function SmsCampaigns() {
   const [advancedFilter, setAdvancedFilter] = useState(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [filters, setFilters] = useState({});
-
+  const [hydratedFromUrl, setHydratedFromUrl] = useState(false);
   /* ---------------------------
    * CAMPAIGN STORE
    * --------------------------- */
@@ -55,6 +61,12 @@ export default function SmsCampaigns() {
     queryFn: getSmsCampaigns,
     select: (r) => r.campaigns ?? [],
   });
+
+  const templateExists =
+    !templateIdFromUrl || templates.some((t) => t._id === templateIdFromUrl);
+
+  const segmentExists =
+    !segmentIdFromUrl || segments.some((s) => s._id === segmentIdFromUrl);
 
   /* ---------------------------
    * FILTERED DATA (IMPORTANT)
@@ -118,6 +130,41 @@ export default function SmsCampaigns() {
     });
   };
 
+  useEffect(() => {
+    if (hydratedFromUrl) return;
+    if (!templateExists || !segmentExists) return;
+
+    let didHydrate = false;
+
+    if (templateIdFromUrl && !selectedTemplateId) {
+      setTemplate(templateIdFromUrl);
+      didHydrate = true;
+    }
+
+    if (segmentIdFromUrl && !selectedSegmentId) {
+      setSegment(segmentIdFromUrl);
+      didHydrate = true;
+    }
+
+    if (didHydrate) {
+      openStart();
+      setHydratedFromUrl(true);
+    }
+  }, [
+    templateIdFromUrl,
+    segmentIdFromUrl,
+    templateExists,
+    templateExists,
+    selectedTemplateId,
+    selectedSegmentId,
+    hydratedFromUrl,
+  ]);
+  useEffect(() => {
+    if (!hydratedFromUrl) return;
+
+    navigate("/sms-campaigns", { replace: true });
+  }, [hydratedFromUrl]);
+
   /* ---------------------------
    * RENDER
    * --------------------------- */
@@ -126,7 +173,7 @@ export default function SmsCampaigns() {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-semibold">SMS Campaigns</h1>
         <button
-          onClick={openStart}
+          onClick={() => (showStart ? closeStart() : openStart())}
           className="bg-green-700/70 px-4 py-2 rounded-xl text-white"
         >
           Start Campaign
@@ -162,7 +209,7 @@ export default function SmsCampaigns() {
               <option value="">Select segment</option>
               {segments.map((s) => (
                 <option key={s._id} value={s._id}>
-                  {s.name}
+                  {s.name} ({s.count})
                 </option>
               ))}
             </select>

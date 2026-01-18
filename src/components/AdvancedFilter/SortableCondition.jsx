@@ -1,6 +1,5 @@
 // src/components/AdvancedFilter/SortableCondition.jsx
 
-
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import ConditionRow from "./ConditionRow";
@@ -10,14 +9,10 @@ export default function SortableCondition({
   onChange,
   onRemove,
   showLogic,
+  fields,
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({ id: condition.id });
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id: condition.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -40,6 +35,7 @@ export default function SortableCondition({
         onChange={onChange}
         onRemove={onRemove}
         showLogic={showLogic}
+        fields={fields}
       />
     </div>
   );

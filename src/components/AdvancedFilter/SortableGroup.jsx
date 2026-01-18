@@ -9,7 +9,7 @@ import {
 } from "@dnd-kit/sortable";
 import SortableCondition from "./SortableCondition";
 
-export default function SortableGroup({ group, index, filter, setFilter }) {
+export default function SortableGroup({ group, index, filter, setFilter, fields }) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: group.id });
 
@@ -71,6 +71,7 @@ export default function SortableGroup({ group, index, filter, setFilter }) {
               key={cond.id}
               condition={cond}
               showLogic={ci < group.conditions.length - 1}
+              fields={fields}
               onChange={(next) => {
                 const updated = structuredClone(filter);
                 updated.groups[index].conditions[ci] = next;

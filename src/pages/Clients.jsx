@@ -14,6 +14,7 @@ import SmsModalCopy1 from "../components/SmsModalCopy1";
 import { highlightMatch } from "../utils/highlightMatch";
 import { loadPresets, savePresets } from "../utils/filterPresets";
 import DataTableView from "../components/DataTableView";
+import { USER_ADVANCED_FILTER_FIELDS } from "../config/userAdvancedFilterFields";
 
 // function SearchBar({ value, onChange, onClear, onAdvanced }) {
 //   return (
@@ -462,6 +463,7 @@ export default function Clients() {
         enableAdvancedFilter={true}
         enableColumnFilters={true}
         enablePagination={true}
+        advancedFilterFields={USER_ADVANCED_FILTER_FIELDS}
         /* SEARCH */
         search={quickSearch}
         onSearchChange={setQuickSearch}

@@ -12,10 +12,9 @@ export default function ConditionRow({
   onChange,
   onRemove,
   showLogic,
+  fields,
 }) {
-  const fieldDef = USER_ADVANCED_FILTER_FIELDS.find(
-    (f) => f.key === condition.field
-  );
+  const fieldDef = fields.find((f) => f.key === condition.field);
   const [options, setOptions] = useState([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
 
@@ -81,7 +80,7 @@ export default function ConditionRow({
         className="bg-slate-700 text-white px-2 py-1 rounded"
       >
         <option value="">Field</option>
-        {USER_ADVANCED_FILTER_FIELDS.map((f) => (
+        {fields.map((f) => (
           <option key={f.key} value={f.key}>
             {f.label}
           </option>
@@ -99,10 +98,10 @@ export default function ConditionRow({
               ...condition,
               operator: op,
               value: ["contains", "not_contains"].includes(op)
-                ? condition.value ?? ""
+                ? (condition.value ?? "")
                 : "",
               values: ["in", "not_in"].includes(op)
-                ? condition.values ?? []
+                ? (condition.values ?? [])
                 : [],
             });
           }}

@@ -11,6 +11,7 @@ export default function DataTableView({
   enableAdvancedFilter = false,
   enableColumnFilters = false,
   enablePagination = false,
+  advancedFilterFields,
 
   /* ---------- search ---------- */
   search,
@@ -71,6 +72,7 @@ export default function DataTableView({
           onSavePreset={onSavePreset}
           onSelectPreset={onSelectPreset}
           onDeletePreset={onDeletePreset}
+          fields={advancedFilterFields}
         />
       )}
 

@@ -4,16 +4,27 @@ import { adminFetch } from "./adminClient";
 /**
  * Get SMS history list
  */
-export function getSmsHistory({ campaignId, page = 1, limit = 20 }) {
-  const params = new URLSearchParams({ campaignId, page, limit });
-  return adminFetch(`/admin/sms/history?${params}`);
-}
+export function getSmsHistory({
+  brand,
+  status,
+  from,
+  to,
+  campaignId,
+  page = 1,
+  limit = 20,
+}) {
+  const params = new URLSearchParams();
 
-export function getSmsHistoryAdvanced({ filter, page = 1, limit = 20 }) {
-  return adminFetch("/admin/sms/history/advanced", {
-    method: "POST",
-    body: JSON.stringify({ filter, page, limit }),
-  });
+  if (brand) params.set("brand", brand);
+  if (status) params.set("status", status);
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  if (campaignId) params.set("campaignId", campaignId);
+
+  params.set("page", page);
+  params.set("limit", limit);
+
+  return adminFetch(`/admin/sms/history?${params.toString()}`);
 }
 
 /**

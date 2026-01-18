@@ -7,7 +7,6 @@ import {
   getSmsHistory,
   retryFailedSms,
   exportSmsHistoryCsv,
-  getSmsHistoryAdvanced,
 } from "../api/adminSmsHistoryService";
 
 import { smsHistoryColumns } from "../config/smsHistoryColumns";
@@ -32,12 +31,6 @@ export default function SmsHistory() {
     setColumnFilter,
     removeColumnFilter,
 
-    advancedFilter,
-    advancedOpen,
-    openAdvanced,
-    closeAdvanced,
-    setAdvancedFilter,
-
     page,
     setPage,
     totalPages,
@@ -56,17 +49,12 @@ export default function SmsHistory() {
   const load = async () => {
     setLoading(true);
 
-    const res = advancedFilter
-      ? await getSmsHistoryAdvanced({
-          filter: advancedFilter,
-          page,
-          limit: 20,
-        })
-      : await getSmsHistory({
-          campaignId,
-          page,
-          limit: 20,
-        });
+    const res = await getSmsHistory({
+      campaignId,
+      page,
+      limit: 20,
+      ...columnFilters,
+    });
 
     setItems(res.items || []);
     setTotalPages(res.totalPages || 1);
@@ -75,7 +63,7 @@ export default function SmsHistory() {
 
   useEffect(() => {
     load();
-  }, [campaignId, page, advancedFilter]);
+  }, [campaignId, page]);
 
   /* ---------------------------
    * RETRY FAILED
@@ -130,26 +118,20 @@ export default function SmsHistory() {
 
       {/* TABLE */}
       <DataTableView
+        /* FEATURES */
         enableSearch
         enableColumnFilters
-        enableAdvancedFilter
         enablePagination
+
         /* SEARCH */
         search={search}
         onSearchChange={setSearch}
         onSearchClear={() => setSearch("")}
-        onOpenAdvanced={openAdvanced}
-        /* ADVANCED */
-        advancedOpen={advancedOpen}
-        advancedFilter={advancedFilter}
-        onCloseAdvanced={closeAdvanced}
-        onApplyAdvanced={(f) => {
-          setAdvancedFilter(f);
-          closeAdvanced();
-        }}
-        /* COLUMN FILTERS (client-side) */
+
+        /* COLUMN FILTERS */
         columnFilters={columnFilters}
         onRemoveColumnFilter={removeColumnFilter}
+
         /* TABLE */
         tableProps={{
           loading,
@@ -158,6 +140,7 @@ export default function SmsHistory() {
           filters: columnFilters,
           onFilterChange: setColumnFilter,
         }}
+
         /* PAGINATION */
         page={page}
         totalPages={totalPages}
