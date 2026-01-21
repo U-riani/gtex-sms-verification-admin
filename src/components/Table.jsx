@@ -1,12 +1,13 @@
 // src/components/Table.jsx
 import { useState, useEffect, useRef, useMemo } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faPenToSquare } from "@fortawesome/free-solid-svg-icons";
+// import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+// import { faEye, faPenToSquare } from "@fortawesome/free-solid-svg-icons";
 import { brandsWithColor } from "../data/brandsWIthColors";
 import TableHeadCell from "../components/TableHeadCell";
 import TableFilterDropdown from "../components/TableFilterDropdown";
 import { SORT_STATES } from "../constanst/sortStates";
-import normalizeCellValue from "../utils/normalizeCellValue";
+// import normalizeCellValue from "../utils/normalizeCellValue";
+import { runColumnFilter } from "../utils/runColumnFilter";
 
 const normalizeEnum = (value) => {
   if (Array.isArray(value)) return value.map(String);
@@ -14,127 +15,12 @@ const normalizeEnum = (value) => {
   return [String(value)];
 };
 
-const runFilter = (row, key, filter) => {
-  console.log("[runFilter]", {
-    column: key,
-    rowValue: row[key],
-    normalized: normalizeCellValue(row[key], filter.type),
-    filter,
-  });
-  const cell = normalizeCellValue(row[key], filter.type);
-
-  // BASE
-  const baseFn = FILTER_OPERATORS[filter.type]?.[filter.base?.operator];
-  const baseResult =
-    filter.base?.values?.length && baseFn
-      ? baseFn(cell, filter.base.values)
-      : true;
-
-  if (!filter.conditions?.length) {
-    return baseResult;
-  }
-
-  // ADVANCED (combined separately)
-  let advancedResult = null;
-
-  for (let i = 0; i < filter.conditions.length; i++) {
-    const cond = filter.conditions[i];
-    const fn = FILTER_OPERATORS[filter.type]?.[cond.operator];
-    if (!fn) continue;
-
-    const condResult = fn(cell, cond.values);
-
-    if (advancedResult === null) {
-      advancedResult = condResult;
-    } else {
-      const joinLogic = cond.logic ?? "AND"; // 👈 logic belongs to THIS condition
-      advancedResult =
-        joinLogic === "OR"
-          ? advancedResult || condResult
-          : advancedResult && condResult;
-    }
-  }
-
-  // if there were no valid conditions
-  if (advancedResult === null) {
-    advancedResult = true;
-  }
-
-  const finalResult =
-    filter.baseLogic === "OR"
-      ? baseResult || advancedResult
-      : baseResult && advancedResult;
-
-  console.log("[runFilter result]", {
-    column: key,
-    baseResult,
-    advancedResult,
-    finalResult,
-  });
-  // COMBINE BASE + ADVANCED
-  return filter.baseLogic === "OR"
-    ? baseResult || advancedResult
-    : baseResult && advancedResult;
-};
-
-const FILTER_OPERATORS = {
-  text: {
-    contains: (cell, selected) =>
-      selected.some((s) => cell.some((c) => c.includes(s))),
-    not_contains: (cell, selected) =>
-      selected.every((s) => cell.every((c) => !c.includes(s))),
-    equals: (cell, selected) => selected.some((s) => cell.includes(s)),
-    not_equals: (cell, selected) => selected.every((s) => !cell.includes(s)),
-    empty: (cell) => cell.length === 0 || cell.every((v) => v === ""),
-    not_empty: (cell) => cell.some((v) => v !== ""),
-    starts_with: (cell, selected) =>
-      selected.some((s) => cell.some((c) => c.startsWith(s))),
-
-    ends_with: (cell, selected) =>
-      selected.some((s) => cell.some((c) => c.endsWith(s))),
-  },
-
-  enum: {
-    in: (cell, selected) => selected.some((s) => cell.includes(s)),
-    not_in: (cell, selected) => selected.every((s) => !cell.includes(s)),
-    empty: (cell) => cell.length === 0,
-    not_empty: (cell) => cell.length > 0,
-  },
-
-  number: {
-    equals: (cell, selected) => selected.includes(cell[0]),
-    gt: (cell, selected) => cell[0] > selected[0],
-    lt: (cell, selected) => cell[0] < selected[0],
-    between: (cell, selected) =>
-      cell[0] >= selected[0] && cell[0] <= selected[1],
-  },
-
-  date: {
-    on: (cell, selected) => cell[0] === selected[0],
-    before: (cell, selected) => cell[0] < selected[0],
-    after: (cell, selected) => cell[0] > selected[0],
-    between: (cell, selected) =>
-      cell[0] >= selected[0] && cell[0] <= selected[1],
-  },
-  boolean: {
-    equals: (cell, selected) => {
-      // If both true & false selected → no filtering
-      if (selected.length !== 1) return true;
-      return cell[0] === selected[0];
-    },
-
-    not_equals: (cell, selected) => {
-      // If both selected → no filtering
-      if (selected.length !== 1) return true;
-      return cell[0] !== selected[0];
-    },
-  },
-};
-
 export default function Table({
   loading,
   columns,
   data,
+  baseData,
+  filterContextData,
   onRowClick,
   selectable = false,
   selectedIds = new Set(),
@@ -150,6 +36,7 @@ export default function Table({
 }) {
   const [sort, setSort] = useState({});
   const [activeFilter, setActiveFilter] = useState(null);
+  const [previewFilter, setPreviewFilter] = useState(null);
 
   const tableScrollRef = useRef(null);
 
@@ -157,24 +44,36 @@ export default function Table({
     setSort(state === SORT_STATES.NONE ? {} : { [key]: state });
   };
 
-  const getFilteredDataForColumn = (columnKey) =>
-    data.filter((row) =>
-      Object.entries(filters)
-        .filter(([k]) => k !== columnKey)
-        .every(([k, filter]) => runFilter(row, k, filter))
-    );
+  const getFilteredDataForColumn = (columnKey, previewFilter) =>
+    filterContextData.filter((row) => {
+      // 1️⃣ apply all OTHER column filters
+      for (const [key, filter] of Object.entries(filters)) {
+        if (key === columnKey) continue; // 👈 skip self
+        if (!runColumnFilter(row, key, filter)) {
+          return false;
+        }
+      }
 
-  const filteredData = useMemo(() => {
-    if (!Object.keys(filters).length) return data;
+      // 2️⃣ apply preview filter for THIS column (if any)
+      if (previewFilter) {
+        return runColumnFilter(row, columnKey, previewFilter);
+      }
 
-    return data.filter((row) =>
-      Object.entries(filters).every(([key, filter]) =>
-        runFilter(row, key, filter)
-      )
-    );
-  }, [data, filters]);
+      return true;
+    });
 
-  const sortedData = [...filteredData];
+  // const filteredData = useMemo(() => {
+  //   if (!Object.keys(filters).length) return data;
+
+  //   return data.filter((row) =>
+  //     Object.entries(filters).every(([key, filter]) =>
+  //       runColumnFilter(row, key, filter),
+  //     ),
+  //   );
+  // }, [data, filters]);
+  // console.log("filteredData", data);
+
+  const sortedData = [...data]; // data is already filtered
   const visibleRowIds = sortedData.map((row) => row._id);
 
   const allSelected =
@@ -235,7 +134,7 @@ export default function Table({
 
     requestAnimationFrame(() => {
       const th = document.querySelector(
-        `th[data-col="${openFilterRequest.key}"]`
+        `th[data-col="${openFilterRequest.key}"]`,
       );
       const container = tableScrollRef.current;
       if (!th || !container) return;
@@ -256,8 +155,12 @@ export default function Table({
 
   const columnTypeMap = useMemo(
     () => Object.fromEntries(columns.map((c) => [c.key, c.type || "text"])),
-    [columns]
+    [columns],
   );
+  useEffect(() => {
+    // When switching columns, discard previous preview
+    setPreviewFilter(null);
+  }, [activeFilter]);
 
   return (
     <div
@@ -273,17 +176,24 @@ export default function Table({
         <div className="bg-slate-500 -mt-0.5 sticky h-0.5 -top-0.5 left-0 z-20 ">
           {activeFilter && (
             <TableFilterDropdown
+              key={activeFilter}
               anchorKey={activeFilter}
               containerRef={tableScrollRef}
               columnKey={activeFilter}
               columnType={columnTypeMap[activeFilter] ?? "text"}
-              data={getFilteredDataForColumn(activeFilter)}
+              data={getFilteredDataForColumn(activeFilter, previewFilter)}
+              universeData={baseData}
               value={filters[activeFilter]}
+              onPreviewChange={(draft) => setPreviewFilter(draft)}
               onChange={(payload) => {
                 onFilterChange?.(activeFilter, payload);
+                setPreviewFilter(null); // ✅ important
                 setActiveFilter(null);
               }}
-              onClose={() => setActiveFilter(null)}
+              onClose={() => {
+                setPreviewFilter(null); // ✅ important
+                setActiveFilter(null);
+              }}
             />
           )}
         </div>
@@ -344,16 +254,18 @@ export default function Table({
                   onSort={(state) => handleSort(col.key, state)}
                   onFilter={() => {
                     setActiveFilter((prev) =>
-                      prev === col.key ? null : col.key
+                      prev === col.key ? null : col.key,
                     );
                   }}
                   filterActive={!!filters[col.key]}
                 />
               ))}
 
-              <th className="px-4 py-3 border-b text-xs text-center">
-                Actions
-              </th>
+              {rowActions && (
+                <th className="px-4 py-3 border-b text-xs text-center">
+                  Actions
+                </th>
+              )}
             </tr>
           </thead>
 
@@ -396,27 +308,14 @@ export default function Table({
                     <td key={col.key} className="px-4 py-3">
                       {col.render ? col.render(row) : row[col.key]}
                     </td>
-                  )
+                  ),
                 )}
 
-                <td className="px-4 py-3 flex justify-center gap-3 text-sm">
-                  {rowActions ? (
-                    rowActions(row)
-                  ) : (
-                    <>
-                      <button onClick={() => onRowClick(row)}>
-                        <FontAwesomeIcon icon={faEye} />
-                      </button>
-                      <button
-                        onClick={() =>
-                          (window.location.href = `/clients/${row._id}/edit`)
-                        }
-                      >
-                        <FontAwesomeIcon icon={faPenToSquare} />
-                      </button>
-                    </>
-                  )}
-                </td>
+                {rowActions && (
+                  <td className=" text-sm">
+                    <span className="flex flex-row items-center justify-center gap-3">{rowActions(row)}</span>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

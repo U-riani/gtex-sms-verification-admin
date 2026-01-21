@@ -29,7 +29,7 @@ export default function ActiveFilters({
   const hasAnything =
     quickSearch ||
     advancedFilter?.groups?.length ||
-    Object.keys(columnFilters).length > 0;
+    (columnFilters && Object.keys(columnFilters).length > 0);
 
   if (!hasAnything) {
     return null;
@@ -144,7 +144,7 @@ export default function ActiveFilters({
                           color="purple"
                           label={`${cond.field} ${cond.operator} ${truncate(
                             cond.value,
-                            10
+                            10,
                           )}`}
                           title={`${cond.field} ${cond.operator} ${cond.value}`}
                           onRemove={() => onRemoveAdvancedCondition(gi, ci)}
@@ -174,33 +174,41 @@ export default function ActiveFilters({
 
           {/* COLUMN FILTERS */}
           {Object.entries(columnFilters).map(([key, f]) => {
-            const values = Array.isArray(f.values) ? f.values : [];
+            console.log("-----", key, f)
+            const values =
+              f.quick?.values ??
+              f.advanced?.conditions?.flatMap((c) => c.values ?? []) ??
+              [];
 
             const safeValues =
               f.type === "date"
                 ? f.operator === "between" && values.length === 2
                   ? [
                       `${new Date(values[0]).toLocaleDateString()} – ${new Date(
-                        values[1]
+                        values[1],
                       ).toLocaleDateString()}`,
                     ]
                   : values.map((v) => new Date(v).toLocaleDateString())
                 : f.type === "boolean"
-                ? values.map((v) => (v ? "YES" : "NO"))
-                : values.map(String);
+                  ? values.map((v) => (v ? "YES" : "NO"))
+                  : values.map(String);
 
             const fullValue = safeValues.join(", ");
             const shortValue = truncate(safeValues[0] ?? "");
             const extraCount = safeValues.length - 1;
-            const label =
-              `${key}: ` +
-              f.conditions
+            let label = `${key}: `;
+
+            if (f.advanced?.conditions?.length) {
+              label += f.advanced.conditions
                 .map((c, i) =>
-                  i < f.conditions.length - 1
-                    ? `${c.operator} ${c.logic}`
-                    : c.operator
+                  i < f.advanced.conditions.length - 1
+                    ? `${c.operator} ${c.logic ?? "AND"}`
+                    : c.operator,
                 )
                 .join(" ");
+            } else if (f.quick) {
+              label += f.quick.operator;
+            }
 
             return (
               <Chip

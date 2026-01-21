@@ -1,28 +1,29 @@
 // src/utils/normalizeCellValue.js
-const normalizeCellValue = (value, type) => {
+export default function normalizeCellValue(value, type) {
   if (value == null) return [];
 
   switch (type) {
-    case "text":
-      return [String(value).trim().toLowerCase()];
-
-    case "enum":
-      return Array.isArray(value)
-        ? value.map((v) => String(v).toLowerCase())
-        : [String(value).toLowerCase()];
-
-    case "number":
-      return [Number(value)].filter((v) => !Number.isNaN(v));
+    case "boolean":
+      return [Boolean(value)];
 
     case "date":
-      return [new Date(value).getTime()].filter((v) => !Number.isNaN(v));
+      // always store dates as timestamps
+      if (Array.isArray(value)) {
+        return value.map((v) => new Date(v).getTime());
+      }
+      return [new Date(value).getTime()];
 
-    case "boolean":
-      // 🔑 THIS IS THE IMPORTANT PART
-      return [Boolean(value)];
-      
+    case "number":
+      return [Number(value)];
+
+    case "enum":
+      if (Array.isArray(value)) {
+        return value.map((v) => String(v).toLowerCase());
+      }
+      return [String(value).toLowerCase()];
+
+    case "text":
     default:
-      return [String(value)];
+      return [String(value).toLowerCase()];
   }
-};
-export default normalizeCellValue;
+}

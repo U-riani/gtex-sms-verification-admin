@@ -1,55 +1,105 @@
 // src/components/ConditionRow.jsx
+import {
+  withStartOfDay,
+  withEndOfDay,
+} from "../utils/datePicker.js";
+import DateTimeSelect from "./DateTimeSelect.jsx";
 
 export default function ConditionRow({ operators, value, onChange, onRemove }) {
-  // 🔍 LOG INITIAL RENDER
-  console.log("[ConditionRow render]", {
-    operator: value.operator,
-    values: value.values,
-    logic: value.logic,
-  });
-  return (
-    <div className="flex w-full flex-col gap-2 items-center bg-slate-900/60 rounded-lg px-2 py-1">
-      <select
-        className="w-full px-2 py-1 rounded bg-slate-800 text-slate-100"
-        value={value.operator}
-        onChange={(e) => {
-          const next = { ...value, operator: e.target.value };
+  function renderValueInput() {
+    if (value.operator === "empty" || value.operator === "not_empty") {
+      return null;
+    }
 
-          console.log("[ConditionRow operator change]", {
-            before: value,
-            after: next,
-          });
+    if (value.type === "date") {
+      if (value.operator === "between") {
+        return (
+          <div className="flex flex-col gap-2">
+            {/* FROM (inclusive) */}
+            <DateTimeSelect
+              value={value.values?.[0] ?? ""}
+              onChange={(iso) =>
+                onChange({
+                  ...value,
+                  values: [
+                    withStartOfDay(iso),
+                    value.values?.[1] ?? "",
+                  ],
+                })
+              }
+            />
 
-          onChange(next);
-        }}
-      >
-        {operators.map((op) => (
-          <option key={op.value} value={op.value}>
-            {op.label}
-          </option>
-        ))}
-      </select>
+            {/* TO (inclusive) */}
+            <DateTimeSelect
+              value={value.values?.[1] ?? ""}
+              onChange={(iso) =>
+                onChange({
+                  ...value,
+                  values: [
+                    value.values?.[0] ?? "",
+                    withEndOfDay(iso),
+                  ],
+                })
+              }
+            />
+          </div>
+        );
+      }
 
+      // Single-date operators (>, <, =, etc.)
+      return (
+        <DateTimeSelect
+          value={value.values?.[0] ?? ""}
+          onChange={(iso) =>
+            onChange({
+              ...value,
+              values: [iso],
+            })
+          }
+        />
+      );
+    }
+
+    return (
       <input
-        className="w-full px-2 py-1 rounded bg-slate-800 text-slate-100"
         value={value.values?.[0] ?? ""}
-        onChange={(e) => {
-          const next = { ...value, values: [e.target.value] };
-
-          console.log("[ConditionRow value change]", {
-            before: value,
-            after: next,
-          });
-
-          onChange(next);
-        }}
+        onChange={(e) =>
+          onChange({ ...value, values: [e.target.value] })
+        }
+        className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm text-slate-100"
+        placeholder="Enter value…"
       />
+    );
+  }
 
-      {onRemove && (
-        <button onClick={onRemove} className="text-red-400 hover:text-red-300">
-          ✕
-        </button>
-      )}
+  return (
+    <div className="group relative w-full rounded-xl bg-slate-900/80 border border-slate-700/40 px-4 py-3">
+      <div className="flex items-center gap-3 border border-slate-500/50 rounded-lg">
+        <select
+          value={value.operator}
+          onChange={(e) =>
+            onChange({ ...value, operator: e.target.value })
+          }
+          className="flex-1 rounded-lg bg-slate-900/90 px-3 py-2 text-sm text-slate-100"
+        >
+          {operators.map((op) => (
+            <option key={op.value} value={op.value}>
+              {op.label}
+            </option>
+          ))}
+        </select>
+
+        {onRemove && (
+          <button
+            onClick={onRemove}
+            className="h-9 w-9 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
+      <div className="mt-3">{renderValueInput()}</div>
     </div>
   );
 }

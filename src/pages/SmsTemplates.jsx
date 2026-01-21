@@ -302,13 +302,14 @@ console.log(filteredTemplates)
                   onClick={() =>
                     navigate(`/sms-campaigns?templateId=${row._id}`)
                   }
-                  className="text-green-500 hover:underline text-sm"
+                  className="bg-green-300/20 px-2 pb-0.5 text-green-500 rounded hover:underline text-sm cursor-pointer"
                 >
                   Send
                 </button>
                 <button
                   onClick={() => navigate(`/sms-templates/${row._id}/edit`)}
-                  className="text-blue-400 hover:text-blue-300"
+                  className="text-blue-400 hover:text-blue-300 cursor-pointer"
+                  title="Edit"
                 >
                   ✏️
                 </button>

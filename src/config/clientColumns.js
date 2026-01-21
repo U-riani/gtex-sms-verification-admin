@@ -29,7 +29,7 @@ export const clientColumns = ({ highlight } = {}) => [
     label: "Phone",
     sortable: true,
     filterable: true,
-    render: (u) => (highlight ? highlightMatch(u.phone.full, highlight) : u.phone.full),
+    render: (u) => (highlight ? highlightMatch(u.phone, highlight) : u.phone),
   },
   {
     key: "dateOfBirth",

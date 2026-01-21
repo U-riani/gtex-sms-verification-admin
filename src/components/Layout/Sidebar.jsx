@@ -90,7 +90,7 @@ export default function Sidebar({ open, onClose }) {
                   e.stopPropagation();
                   setClientsOpen((p) => !p);
                 }}
-                className="px-3 py-2 h-full bg-stone-100/10 text-gray-300 hover:text-white transition"
+                className="px-3 py-2 h-full bg-stone-100/10 text-gray-300 hover:text-white transition cursor-pointer"
                 aria-label="Toggle clients menu"
               >
                 <span

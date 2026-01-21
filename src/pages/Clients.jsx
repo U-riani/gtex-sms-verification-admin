@@ -3,6 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faEye, faPenToSquare } from "@fortawesome/free-solid-svg-icons";
+
 import { useClientSelectionStore } from "../store/clientSelectionStore";
 import { getAdminUsers, advancedFilterUsers } from "../api/adminUserService";
 
@@ -60,7 +63,6 @@ export default function Clients() {
   const [selectedPresetId, setSelectedPresetId] = useState("");
 
   // frontend column filters
-  const [filters, setFilters] = useState({});
   const [openColumnFilter, setOpenColumnFilter] = useState(null);
 
   // quick search
@@ -114,15 +116,6 @@ export default function Clients() {
   // helpers
   // ---------------------------
   const clearQuickSearch = () => setQuickSearch("");
-  const clearAdvancedFilter = () => setAdvancedFilter(null);
-
-  const removeColumnFilter = (key) => {
-    setFilters((prev) => {
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
-  };
 
   const editColumnFilter = (key) => {
     const el = document.querySelector(`th[data-col="${key}"]`);
@@ -157,21 +150,8 @@ export default function Clients() {
         emailPromo: Boolean(u.promoChannels?.email?.enabled),
         smsPromo: Boolean(u.promoChannels?.sms?.enabled),
       })),
-    [users]
+    [users],
   );
-
-  const filteredUsers = useMemo(() => {
-    if (!debouncedSearch) return normalizedUsers;
-
-    const q = debouncedSearch.toLowerCase();
-    return normalizedUsers.filter((user) =>
-      searchableKeys.some((key) =>
-        String(user[key] ?? "")
-          .toLowerCase()
-          .includes(q)
-      )
-    );
-  }, [normalizedUsers, debouncedSearch]);
 
   const removeAdvancedCondition = (gi, ci) => {
     if (!advancedFilter) return;
@@ -241,7 +221,7 @@ export default function Clients() {
       type: "text",
       sortable: true,
       filterable: true,
-      render: (u) => highlightMatch(u.phone.full, quickSearch),
+      render: (u) => highlightMatch(u.phone, quickSearch),
     },
     {
       key: "dateOfBirth",
@@ -292,20 +272,6 @@ export default function Clients() {
       render: (u) => highlightMatch(u.smsPromo ? "YES" : "NO", quickSearch),
     },
   ];
-
-  console.log(">>> filter", filters);
-
-  const onFilterChange = (key, payload) => {
-    const col = columns.find((c) => c.key === key);
-
-    setFilters((prev) => ({
-      ...prev,
-      [key]: {
-        type: col?.type ?? "text",
-        ...payload,
-      },
-    }));
-  };
 
   // const editAdvancedCondition = (gi, ci) => {
   //   setAdvancedOpen(true);
@@ -498,8 +464,6 @@ export default function Clients() {
           setSelectedPresetId("");
         }}
         /* ACTIVE FILTERS */
-        columnFilters={filters}
-        onRemoveColumnFilter={removeColumnFilter}
         onEditColumnFilter={editColumnFilter}
         onRemoveAdvancedCondition={removeAdvancedCondition}
         onRemoveAdvancedGroup={removeAdvancedGroup}
@@ -508,16 +472,31 @@ export default function Clients() {
         tableProps={{
           loading: isLoading,
           columns,
-          data: filteredUsers,
+          data: normalizedUsers,
           selectable: true,
           selectedIds,
           onSetSelectedIds: setSelectedIds,
           onToggleRow: toggleRow,
-          filters,
-          onFilterChange,
           openFilterRequest: openColumnFilter,
           onFilterOpened: clearOpenColumnFilter,
-          onRowClick: (row) => navigate(`/clients/${row._id}`),
+          rowActions: (row) => (
+            <>
+              <button
+                onClick={() => navigate(`/clients/${row._id}`)}
+                className="p-2 text-blue-400/70 hover:text-blue-300 cursor-pointer"
+                title="View details"
+              >
+                <FontAwesomeIcon icon={faEye} />
+              </button>
+              <button
+                onClick={() => navigate(`/clients/${row._id}/edit`)}
+                className="p-2 text-amber-400/70 hover:text-amber-300 cursor-pointer"
+                title="View details"
+              >
+                <FontAwesomeIcon icon={faPenToSquare} />
+              </button>
+            </>
+          ),
         }}
         /* SELECTION BAR */
         selectionBar={

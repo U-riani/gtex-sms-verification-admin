@@ -1,8 +1,12 @@
+// src/pages/SmsCampaigns.jsx
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { useEffect } from "react";
+
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faEye } from "@fortawesome/free-solid-svg-icons";
 
 import { getSmsTemplates } from "../api/adminSmsTemplateService";
 import { getSegments } from "../api/segmentService";
@@ -94,7 +98,7 @@ export default function SmsCampaigns() {
     return normalizedCampaigns.filter((c) =>
       [c.templateName, c.templateContent, c.segmentName, c.status]
         .filter(Boolean)
-        .some((v) => String(v).toLowerCase().includes(q))
+        .some((v) => String(v).toLowerCase().includes(q)),
     );
   }, [normalizedCampaigns, search]);
 
@@ -107,7 +111,7 @@ export default function SmsCampaigns() {
         highlight: search,
         onDetails: (id) => navigate(`/sms-campaigns/${id}`),
       }),
-    [navigate, search]
+    [navigate, search],
   );
 
   /* ---------------------------
@@ -275,7 +279,15 @@ export default function SmsCampaigns() {
           filters,
           onFilterChange: (key, payload) =>
             setFilters((prev) => ({ ...prev, [key]: payload })),
-          onRowClick: (row) => navigate(`/sms-campaigns/${row._id}`),
+          rowActions: (row) => (
+            <button
+              onClick={() => navigate(`/sms-campaigns/${row._id}`)}
+              className="text-blue-400 hover:text-blue-300"
+              title="View details"
+            >
+              <FontAwesomeIcon icon={faEye} />
+            </button>
+          ),
         }}
       />
     </div>

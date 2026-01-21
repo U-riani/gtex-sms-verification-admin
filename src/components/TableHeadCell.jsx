@@ -27,8 +27,8 @@ export default function TableHeadCell({
       sortState === SORT_STATES.NONE
         ? SORT_STATES.ASC
         : sortState === SORT_STATES.ASC
-        ? SORT_STATES.DESC
-        : SORT_STATES.NONE;
+          ? SORT_STATES.DESC
+          : SORT_STATES.NONE;
 
     onSort?.(next);
   };
@@ -37,16 +37,15 @@ export default function TableHeadCell({
     <th
       ref={thRef}
       data-col={columnKey}
-      onClick={handleSort}
       className={`px-4 py-3 border-b uppercase text-xs tracking-wide text-nowrap select-none ${
-        sortable ? "cursor-pointer hover:bg-slate-600/40" : ""
+        sortable ? " hover:bg-slate-600/40" : ""
       }`}
     >
       <div className="flex items-center gap-2">
         <span className="font-semibold text-gray-200">{label}</span>
 
         {sortable && (
-          <span className="text-gray-400">
+          <span className="text-gray-400 cursor-pointer" onClick={handleSort}>
             {sortState === SORT_STATES.NONE && (
               <FontAwesomeIcon icon={faSort} />
             )}
@@ -61,6 +60,7 @@ export default function TableHeadCell({
 
         {filterable && (
           <button
+            className="cursor-pointer"
             data-filter-btn
             onClick={(e) => {
               e.stopPropagation();

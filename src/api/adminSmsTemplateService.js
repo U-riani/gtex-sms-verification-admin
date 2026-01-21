@@ -23,6 +23,13 @@ export function createSmsTemplate(payload) {
   });
 }
 
+export function updateSmsTemplate(id, payload) {
+  return adminFetch(`/admin/sms/templates/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function deleteSmsTemplate(id) {
   return adminFetch(`/admin/sms/templates/${id}`, {
     method: "DELETE",

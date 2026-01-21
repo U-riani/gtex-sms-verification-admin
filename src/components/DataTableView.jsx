@@ -1,9 +1,13 @@
 // src/components/DataTableView.jsx
+import { useEffect, useMemo, useState } from "react";
+import { runColumnFilter } from "../utils/runColumnFilter";
+
 import SearchBar from "./SearchBar";
 import Table from "./Table";
 import Pagination from "./Pagination";
 import AdvancedFilterModal from "./AdvancedFilterModal";
 import ActiveFilters from "./ActiveFilters";
+import { runAdvancedFilter } from "../utils/runAdvancedFilter";
 
 export default function DataTableView({
   /* feature flags */
@@ -32,8 +36,6 @@ export default function DataTableView({
   onDeletePreset,
 
   /* ---------- active filters ---------- */
-  columnFilters,
-  onRemoveColumnFilter,
   onEditColumnFilter,
   onRemoveAdvancedCondition,
   onRemoveAdvancedGroup,
@@ -49,6 +51,77 @@ export default function DataTableView({
   /* ---------- selection toolbar ---------- */
   selectionBar,
 }) {
+  // ✅ SINGLE SOURCE OF TRUTH
+  const [filters, setFilters] = useState({});
+
+  // immutable universe
+  const baseData = tableProps.data;
+  console.log("--base data--", baseData);
+
+  const searchedData = useMemo(() => {
+    if (!search) return baseData;
+
+    const q = search.toLowerCase();
+    return baseData.filter((row) =>
+      Object.values(row).some((v) =>
+        String(v ?? "")
+          .toLowerCase()
+          .includes(q),
+      ),
+    );
+  }, [baseData, search]);
+
+  const advancedFilteredData = useMemo(() => {
+    if (!advancedFilter) return searchedData;
+
+    return searchedData.filter((row) => runAdvancedFilter(row, advancedFilter));
+  }, [searchedData, advancedFilter]);
+
+  const filteredData = useMemo(() => {
+    if (!Object.keys(filters).length) return advancedFilteredData;
+
+    return advancedFilteredData.filter((row) =>
+      Object.entries(filters).every(([key, filter]) =>
+        runColumnFilter(row, key, filter),
+      ),
+    );
+  }, [advancedFilteredData, filters]);
+
+  const handleFilterChange = (key, payload) => {
+    if (!payload) {
+      setFilters((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      return;
+    }
+
+    setFilters((prev) => ({
+      ...prev,
+      [key]: payload,
+    }));
+  };
+
+  useEffect(() => {
+    console.log("[Column filters state]", filters);
+  }, [filters]);
+
+  const handleRemoveFilter = (key) => {
+    setFilters((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+  useEffect(() => {
+    console.log("baseData length:", baseData.length);
+  }, [baseData]);
+
+  useEffect(() => {
+    console.log("filteredData length:", filteredData.length);
+  }, [filteredData]);
+
   return (
     <div className="space-y-3">
       {/* SEARCH */}
@@ -85,8 +158,8 @@ export default function DataTableView({
           onRemoveAdvancedCondition={onRemoveAdvancedCondition}
           onRemoveAdvancedGroup={onRemoveAdvancedGroup}
           onEditAdvancedFilter={onEditAdvancedFilter} // 👈 ADD THIS
-          columnFilters={columnFilters}
-          onRemoveColumnFilter={onRemoveColumnFilter}
+          columnFilters={filters}
+          onRemoveColumnFilter={handleRemoveFilter}
           onEditColumnFilter={onEditColumnFilter}
         />
       )}
@@ -94,7 +167,14 @@ export default function DataTableView({
       {selectionBar}
 
       {/* TABLE */}
-      <Table {...tableProps} />
+      <Table
+        {...tableProps}
+        data={filteredData}
+        baseData={baseData}
+        filterContextData={advancedFilteredData}
+        filters={filters}
+        onFilterChange={handleFilterChange}
+      />
 
       {/* PAGINATION */}
       {enablePagination && totalPages > 1 && (

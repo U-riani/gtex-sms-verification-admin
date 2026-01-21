@@ -98,7 +98,7 @@ export default function Segments() {
       {fromSelection && selectedIds.size > 0 && (
         <div className="bg-slate-800 p-4 rounded space-y-3">
           <div className="flex gap-4">
-            <label className="flex gap-2 items-center">
+            <label className="flex gap-2 items-center text-white/70">
               <input
                 type="radio"
                 checked={mode === "existing"}
@@ -107,7 +107,7 @@ export default function Segments() {
               Add to existing segment
             </label>
 
-            <label className="flex gap-2 items-center">
+            <label className="flex gap-2 items-center text-white/70">
               <input
                 type="radio"
                 checked={mode === "new"}
@@ -168,23 +168,23 @@ export default function Segments() {
               <div className="text-white">{s.name}</div>
               <div className="text-xs text-gray-400">{s.count} users</div>
             </div>
-            <button
-              onClick={() =>
-                navigate(`/sms-campaigns?segmentId=${s._id}`)
-              }
-              className="px-4 py-2 rounded-lg bg-green-600 text-white"
-            >
-              Send SMS to segment
-            </button>
-            <button
-              onClick={() => {
-                if (!confirm(`Delete segment "${s.name}"?`)) return;
-                deleteMut.mutate(s._id);
-              }}
-              className="text-red-400 bg-red-400/10 py-2 px-2 rounded hover:text-red-300 hover:bg-red-300/30 text-sm cursor-pointer"
-            >
-              Delete
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => navigate(`/sms-campaigns?segmentId=${s._id}`)}
+                className="px-4 py-2 rounded-lg bg-green-600/20 text-green-500   hover:text-green-300 hover:bg-green-300/30 cursor-pointer"
+              >
+                Send SMS to segment
+              </button>
+              <button
+                onClick={() => {
+                  if (!confirm(`Delete segment "${s.name}"?`)) return;
+                  deleteMut.mutate(s._id);
+                }}
+                className="text-red-400 bg-red-400/10 py-2 px-2 rounded hover:text-red-300 hover:bg-red-300/30 text-sm cursor-pointer"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         ))}
       </div>

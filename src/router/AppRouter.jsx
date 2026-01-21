@@ -8,7 +8,7 @@ import LayoutRoute from "./LayoutRoute";
 import SmsTemplates from "../pages/SmsTemplates";
 import SmsHistory from "../pages/SmsHistory";
 import SmsCampaigns from "../pages/SmsCampaigns";
-import SmsTemplateAnalytics from "../pages/SmsTemplateAnalytics";
+// import SmsTemplateAnalytics from "../pages/SmsTemplateAnalytics";
 import Clients from "../pages/Clients";
 // import Segment from "../pages/Segment";
 import Segments from "../pages/Segments";
@@ -117,14 +117,14 @@ export default function AppRouter() {
             </LayoutRoute>
           }
         />
-        <Route
+        {/* <Route
           path="/sms-template-analytics"
           element={
             <LayoutRoute>
               <SmsTemplateAnalytics />
             </LayoutRoute>
           }
-        />
+        /> */}
       </Routes>
       <UndoSnackbar />
     </>

@@ -3,6 +3,7 @@ import { useMemo, useState, useEffect, useLayoutEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { OPERATORS } from "../constanst/operators";
 import ConditionRow from "./ConditionRow";
+import { FILTER_DEFINITION } from "../constanst/filterDefinition";
 
 const boolLabel = (v) => (v === true ? "YES" : v === false ? "NO" : "(empty)");
 
@@ -13,21 +14,24 @@ export default function TableFilterDropdown({
   columnType,
   data,
   value,
+  onPreviewChange,
   onChange,
   onClose,
+  universeData,
 }) {
   /* ---------------------------
    * UI STATE
    * --------------------------- */
+  const didInitRef = useRef(false);
+  const autoSelectRef = useRef(true);
+
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState([]);
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [baseLogic, setBaseLogic] = useState(value?.baseLogic ?? "AND");
 
   const DROPDOWN_WIDTH = 260;
 
   const promotedRef = useRef(false);
-
 
   const [style, setStyle] = useState({});
   const opensLeft = style.left > window.innerWidth / 2;
@@ -48,29 +52,28 @@ export default function TableFilterDropdown({
     columnType === "enum"
       ? OPERATORS.enum
       : columnType === "boolean"
-      ? OPERATORS.boolean
-      : columnType === "date"
-      ? OPERATORS.date
-      : OPERATORS.text;
+        ? OPERATORS.boolean
+        : columnType === "date"
+          ? OPERATORS.date
+          : OPERATORS.text;
 
   const defaultOperator =
-    value?.conditions?.[0]?.operator ??
+    value?.advanced?.conditions?.[0]?.operator ??
+    value?.quick?.operator ??
     (columnType === "enum"
       ? "in"
       : columnType === "boolean"
-      ? "equals"
-      : columnType === "date"
-      ? "on"
-      : "contains");
-
-  const [operator, setOperator] = useState(defaultOperator);
+        ? "equals"
+        : columnType === "date"
+          ? "on"
+          : "contains");
 
   /* ---------------------------
    * CONDITIONS (single source)
    * --------------------------- */
   const [conditions, setConditions] = useState(() => {
-    if (value?.conditions?.length) {
-      return structuredClone(value.conditions);
+    if (value?.advanced?.conditions?.length) {
+      return structuredClone(value.advanced.conditions);
     }
 
     return [
@@ -82,12 +85,25 @@ export default function TableFilterDropdown({
     ];
   });
 
-  console.log("[TFD initial conditions]", conditions);
-
   /* ---------------------------
    * VALUES
    * --------------------------- */
-  const uniqueValues = useMemo(() => {
+  // 1) universe values: for "isFullSelection" neutrality + value mapping
+  const universeUniqueValues = useMemo(() => {
+    const vals = universeData.flatMap((r) => {
+      const v = r[columnKey];
+      if (v == null) return [];
+      if (columnType === "boolean") return [Boolean(v)];
+      if (Array.isArray(v)) return v.map(String);
+      return [String(v)];
+    });
+    return [...new Set(vals)];
+  }, [universeData, columnKey, columnType]);
+
+  // 2) context values: based on CURRENTLY VISIBLE ROWS for this dropdown
+  // IMPORTANT: `data` already excludes other column filters? It does exclude other column filters by your getFilteredDataForColumn
+  // If you want it to also respect global search + advanced modal, you must pass that filtered set instead (see next section).
+  const contextUniqueValues = useMemo(() => {
     const vals = data.flatMap((r) => {
       const v = r[columnKey];
       if (v == null) return [];
@@ -95,40 +111,55 @@ export default function TableFilterDropdown({
       if (Array.isArray(v)) return v.map(String);
       return [String(v)];
     });
-
     return [...new Set(vals)];
   }, [data, columnKey, columnType]);
 
+  // 3) visible list should be based on CONTEXT
   const visibleValues = useMemo(() => {
-    if (!search || columnType === "boolean") return uniqueValues;
+    const src = contextUniqueValues;
+    if (!search || columnType === "boolean") return src;
     const q = search.toLowerCase();
-    return uniqueValues.filter((v) => String(v).toLowerCase().includes(q));
-  }, [uniqueValues, search, columnType]);
+    return src.filter((v) => String(v).toLowerCase().includes(q));
+  }, [contextUniqueValues, search, columnType]);
 
   /* ---------------------------
    * SYNC FROM FILTER VALUE
    * --------------------------- */
   useEffect(() => {
-    if (!value?.conditions?.[0]?.values) {
-      setSelected([]);
-      return;
+    if (didInitRef.current) return;
+
+    if (value?.quick?.values?.length) {
+      const raw = value.quick.values;
+
+      if (columnType === "boolean") {
+        setSelected(raw.map(Boolean));
+      } else {
+        const map = new Map(
+          universeUniqueValues.map((v) => [String(v).toLowerCase(), v]),
+        );
+
+        setSelected(
+          raw.map((v) => map.get(String(v).toLowerCase())).filter(Boolean),
+        );
+      }
+    } else {
+      setSelected(universeUniqueValues);
     }
 
-    const raw = value.conditions[0].values;
+    didInitRef.current = true;
+  }, [value, universeUniqueValues, columnType]);
 
-    if (columnType === "boolean") {
-      setSelected(raw.map(Boolean));
-      return;
+  useEffect(() => {
+    setSelected((prev) => prev.filter((v) => contextUniqueValues.includes(v)));
+  }, [contextUniqueValues]);
+
+  useEffect(() => {
+    if (value?.advanced?.conditions?.length) {
+      setConditions(structuredClone(value.advanced.conditions));
     }
+  }, [value]);
 
-    const map = new Map(uniqueValues.map((v) => [String(v).toLowerCase(), v]));
-    console.log("[TFD sync from value]", value);
-
-    setSelected(
-      raw.map((v) => map.get(String(v).toLowerCase())).filter(Boolean)
-    );
-  }, [value, uniqueValues, columnType]);
-
+  console.log(visibleValues);
   /* ---------------------------
    * SIMPLE UI → CONDITION[0]
    * --------------------------- */
@@ -140,45 +171,101 @@ export default function TableFilterDropdown({
     visibleValues.length && visibleValues.every((v) => selected.includes(v));
 
   const toggleAll = () => {
+    autoSelectRef.current = false;
+
     setSelected((p) =>
       allSelected
         ? p.filter((v) => !visibleValues.includes(v))
-        : [...new Set([...p, ...visibleValues])]
+        : [...new Set([...p, ...visibleValues])],
     );
   };
 
-  const normalizeValues = (vals) => {
-    if (columnType === "boolean") return vals.map(Boolean);
-    return vals.map((v) => String(v).toLowerCase());
+  const handleClose = () => {
+    didInitRef.current = false;
+    onClose?.();
   };
+
+  const normalizeValues = (vals) => {
+    switch (columnType) {
+      case "boolean":
+        return vals.map(Boolean);
+
+      case "date":
+        return vals.map((v) => new Date(v).getTime());
+
+      case "number":
+        return vals.map(Number);
+
+      default:
+        return vals.map((v) => String(v).toLowerCase());
+    }
+  };
+
+  const previewFilter = useMemo(() => {
+    const validConditions = conditions.filter(
+      (c) => c.values?.length || c.operator.includes("empty"),
+    );
+
+    if (!validConditions.length) return null;
+
+    return {
+      type: columnType,
+      advanced: {
+        conditions: validConditions.map((c, idx) => ({
+          operator: c.operator,
+          values: c.values ?? [],
+          logic: idx === 0 ? undefined : (c.logic ?? "AND"),
+        })),
+      },
+    };
+  }, [conditions, columnType]);
 
   /* ---------------------------
    * APPLY
    * --------------------------- */
   const apply = () => {
-    const payload = {
-      type: columnType,
-      base: {
-        operator,
-        values: normalizeValues(selected),
-      },
-      baseLogic,
-      conditions: advancedOpen
-        ? conditions
-            .filter((c) => c.values?.length)
-            .map((c) => ({
-              operator: c.operator,
-              values: normalizeValues(c.values),
-              logic: c.logic ?? "AND",
-            }))
-        : [],
-    };
+    let quick = undefined;
+    let advanced = undefined;
 
-    console.log("[TFD APPLY PAYLOAD]", payload);
+    // 1️⃣ ALWAYS apply quick filter if selection is partial
+    if (selected.length && selected.length !== universeUniqueValues.length) {
+      quick = {
+        operator: "equals",
+        values: normalizeValues(selected),
+      };
+    }
+
+    // 2️⃣ Apply advanced filter if valid
+    const validConditions = conditions.filter(
+      (c) => c.values?.length || c.operator.includes("empty"),
+    );
+
+    if (validConditions.length) {
+      advanced = {
+        conditions: validConditions.map((c, idx) => ({
+          operator: c.operator,
+          values: normalizeValues(c.values ?? []),
+          logic: idx === 0 ? undefined : (c.logic ?? "AND"),
+        })),
+      };
+    }
+
+    // 3️⃣ Build payload
+    const payload =
+      quick || advanced ? { type: columnType, quick, advanced } : null;
 
     onChange(payload);
+    didInitRef.current = false;
     onClose?.();
   };
+
+  useEffect(() => {
+    if (!advancedOpen) return;
+
+    // Advanced filter redefines universe → auto-select all
+    setSelected(contextUniqueValues);
+    autoSelectRef.current = true;
+  }, [contextUniqueValues, advancedOpen]);
 
   /* ---------------------------
    * POSITIONING
@@ -200,6 +287,15 @@ export default function TableFilterDropdown({
   /* ---------------------------
    * POSITIONING (SMART LEFT / RIGHT)
    * --------------------------- */
+
+  useEffect(() => {
+    if (!advancedOpen) {
+      onPreviewChange?.(null);
+      return;
+    }
+
+    onPreviewChange?.(previewFilter);
+  }, [previewFilter, advancedOpen]);
 
   useLayoutEffect(() => {
     const th = document.querySelector(`th[data-col="${anchorKey}"]`);
@@ -225,6 +321,18 @@ export default function TableFilterDropdown({
     });
   }, [anchorKey]);
 
+  useEffect(() => {
+    if (value?.advanced?.conditions?.length) {
+      setAdvancedOpen(true);
+    }
+  }, [value]);
+
+  useEffect(() => {
+    if (autoSelectRef.current) return;
+
+    setSelected((prev) => prev.filter((v) => contextUniqueValues.includes(v)));
+  }, [contextUniqueValues]);
+
   /* ---------------------------
    * RENDER
    * --------------------------- */
@@ -236,8 +344,9 @@ export default function TableFilterDropdown({
       onClick={(e) => e.stopPropagation()}
     >
       {/* SIMPLE FILTER */}
-      <div className="flex gap-2 mb-2">
-        <select
+      <div className="flex justify-between mb-2">
+        <p className="text-slate-200/50">TEXT FILTER</p>
+        {/* <select
           value={operator}
           onChange={(e) => setOperator(e.target.value)}
           className="flex-1 bg-slate-900 text-white px-2 py-1 rounded"
@@ -247,14 +356,14 @@ export default function TableFilterDropdown({
               {op.label}
             </option>
           ))}
-        </select>
+        </select> */}
 
         <button
           onClick={() => setAdvancedOpen((v) => !v)}
-          className="px-2 bg-slate-700 rounded hover:bg-slate-600"
+          className="px-2 text-white/70 bg-slate-700 rounded hover:bg-slate-600 cursor-pointer"
           title="Advanced"
         >
-          {advancedOpen ? "▴" : "▾"}
+          ➤
         </button>
       </div>
 
@@ -266,21 +375,22 @@ export default function TableFilterDropdown({
         className="w-full mb-2 px-2 py-1 bg-slate-900 text-white rounded"
       />
 
-      <label className="flex gap-2 border-b pb-1 mb-1">
+      <label className="flex gap-2 border-b pb-1 mb-1 text-slate-200/50">
         <input type="checkbox" checked={allSelected} onChange={toggleAll} />
         Select all
       </label>
 
-      <div className="max-h-40 overflow-auto">
+      <div className="h-40 overflow-auto">
         {visibleValues.map((v, i) => (
-          <label key={i} className="flex gap-2">
+          <label key={i} className="flex gap-2 text-slate-200/50">
             <input
               type="checkbox"
               checked={selected.includes(v)}
               onChange={() =>
-                setSelected((p) =>
-                  p.includes(v) ? p.filter((x) => x !== v) : [...p, v]
-                )
+                setSelected((p) => {
+                  autoSelectRef.current = false;
+                  return p.includes(v) ? p.filter((x) => x !== v) : [...p, v];
+                })
               }
             />
             {columnType === "boolean" ? boolLabel(v) : v || "(empty)"}
@@ -295,18 +405,6 @@ export default function TableFilterDropdown({
             className="bg-slate-800 border rounded p-3 space-y-2 max-h-90 overflow-y-auto flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* BASE LOGIC */}
-            <div className="flex justify-center">
-              <select
-                value={baseLogic}
-                onChange={(e) => setBaseLogic(e.target.value)}
-                className="bg-slate-700 text-white text-xs px-2 py-1 rounded"
-              >
-                <option value="AND">AND</option>
-                <option value="OR">OR</option>
-              </select>
-            </div>
-
             {/* CONDITIONS */}
             {conditions.map((cond, idx) => (
               <div
@@ -316,7 +414,7 @@ export default function TableFilterDropdown({
                 <ConditionRow
                   key={idx}
                   operators={operators}
-                  value={cond}
+                  value={{ ...cond, type: columnType }} // 👈 FIX NAME
                   onChange={(v) =>
                     setConditions((c) => c.map((x, i) => (i === idx ? v : x)))
                   }
@@ -328,14 +426,6 @@ export default function TableFilterDropdown({
                   }
                 />
                 {idx < conditions.length - 1 && (
-                  // <select
-                  //   value={logic}
-                  //   onChange={(e) => setLogic(e.target.value)}
-                  //   className="w-full bg-slate-900 text-white px-2 py-1 rounded"
-                  // >
-                  //   <option value="AND">AND</option>
-                  //   <option value="OR">OR</option>
-                  // </select>
                   <div className="inline-flex items-center gap-0.5 rounded-full border border-slate-600 bg-slate-800/50 px-1 py-0.5 text-xs">
                     {["AND", "OR"].map((op) => {
                       const active = conditions[idx + 1]?.logic === op;
@@ -347,8 +437,8 @@ export default function TableFilterDropdown({
                           onClick={() =>
                             setConditions((c) =>
                               c.map((x, i) =>
-                                i === idx + 1 ? { ...x, logic: op } : x
-                              )
+                                i === idx + 1 ? { ...x, logic: op } : x,
+                              ),
                             )
                           }
                           className={`px-3 py-1 rounded-full transition-colors ${
@@ -373,13 +463,13 @@ export default function TableFilterDropdown({
                   { operator: defaultOperator, values: [], logic: "AND" },
                 ])
               }
-              className="w-full text-xs bg-slate-700 hover:bg-slate-600 rounded py-1"
+              className="w-full text-slate-100/60 text-xs bg-slate-700 hover:bg-slate-600 rounded py-1"
             >
               + Add condition
             </button>
             {/* LOGIC BETWEEN CONDITIONS */}
           </div>,
-          document.body
+          document.body,
         )}
 
       {/* ADVANCED */}
@@ -413,7 +503,7 @@ export default function TableFilterDropdown({
       )} */}
 
       <div className="flex justify-end gap-2 mt-3">
-        <button onClick={onClose} className="px-2 bg-gray-700 rounded">
+        <button onClick={handleClose} className="px-2 bg-gray-700 rounded">
           Cancel
         </button>
         <button onClick={apply} className="px-2 bg-blue-600 rounded">
@@ -421,6 +511,6 @@ export default function TableFilterDropdown({
         </button>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }

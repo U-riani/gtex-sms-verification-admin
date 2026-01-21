@@ -30,3 +30,10 @@
 .row-fade {
   transition: opacity 120ms ease, transform 120ms ease;
 }
+
+/* somewhere global */
+.time-select {
+  @apply rounded-lg bg-slate-800 text-slate-100 px-2 py-1
+         ring-1 ring-slate-700 focus:ring-2 focus:ring-blue-500
+         transition;
+}
