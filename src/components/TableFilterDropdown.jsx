@@ -132,7 +132,17 @@ export default function TableFilterDropdown({
     if (value?.quick?.values?.length) {
       const raw = value.quick.values;
 
-      if (columnType === "boolean") {
+      // 🟦 DATE: restore selection via timestamp comparison
+      if (columnType === "date") {
+        const selectedDates = universeUniqueValues.filter((v) => {
+          const ts = new Date(v).getTime();
+          return raw.includes(ts);
+        });
+
+        setSelected(selectedDates);
+      }
+      // 🟦 NON-DATE (existing logic)
+      else if (columnType === "boolean") {
         setSelected(raw.filter((v) => v === true || v === false));
       } else {
         const map = new Map(
@@ -141,6 +151,24 @@ export default function TableFilterDropdown({
 
         setSelected(
           raw.map((v) => map.get(String(v).toLowerCase())).filter(Boolean),
+        );
+      }
+    } else if (value?.advanced?._selected?.length) {
+      // 🟦 Restore advanced manual selection
+      if (columnType === "date") {
+        const restored = universeUniqueValues.filter((v) =>
+          value.advanced._selected.includes(new Date(v).getTime()),
+        );
+        setSelected(restored);
+      } else {
+        const map = new Map(
+          universeUniqueValues.map((v) => [String(v).toLowerCase(), v]),
+        );
+
+        setSelected(
+          value.advanced._selected
+            .map((v) => map.get(String(v).toLowerCase()))
+            .filter(Boolean),
         );
       }
     } else {
@@ -287,6 +315,22 @@ export default function TableFilterDropdown({
       };
     }
 
+    // persist manual selection for advanced reopen
+    let advancedSelected =
+      advancedDirtyRef.current && selected.length
+        ? normalizeValues(selected)
+        : undefined;
+    if (validConditions.length) {
+      advanced = {
+        conditions: validConditions.map((c, idx) => ({
+          operator: c.operator,
+          values: normalizeValues(c.values ?? []),
+          logic: idx === 0 ? undefined : (c.logic ?? "AND"),
+        })),
+        _selected: advancedSelected, // 👈 NEW
+      };
+    }
+
     // 3️⃣ Build payload
     const payload =
       quick || advanced ? { type: columnType, quick, advanced } : null;
@@ -301,11 +345,11 @@ export default function TableFilterDropdown({
 
   useEffect(() => {
     if (!advancedOpen) return;
-    if (!advancedDirtyRef.current) return;
 
-    setSelected(contextUniqueValues);
-    autoSelectRef.current = true;
-    advancedAutoSelectRef.current = true;
+    // 🚫 do NOT auto-select if we have persisted selection
+    if (value?.advanced?._selected?.length) return;
+
+    if (!advancedDirtyRef.current) return;
   }, [conditions, contextUniqueValues, advancedOpen]);
 
   /* ---------------------------

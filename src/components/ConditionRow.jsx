@@ -6,6 +6,7 @@ import {
 } from "../utils/datePicker.js";
 import { dayRange } from "../utils/ateRange.js";
 import DateTimeSelect from "./DateTimeSelect.jsx";
+import { useEffect, useRef, useState } from "react";
 
 export default function ConditionRow({
   operators,
@@ -20,6 +21,34 @@ export default function ConditionRow({
     }
 
     if (value.type === "date") {
+      if (value.operator === "before") {
+        return (
+          <DateTimeSelect
+            value={value.values?.[0] ?? null}
+            onChange={(date) => {
+              onChange({
+                ...value,
+                values: [withStartOfDay(date)],
+              });
+            }}
+          />
+        );
+      }
+
+      // AFTER → compare against end of day
+      if (value.operator === "after") {
+        return (
+          <DateTimeSelect
+            value={value.values?.[0] ?? null}
+            onChange={(date) => {
+              onChange({
+                ...value,
+                values: [withEndOfDay(date)],
+              });
+            }}
+          />
+        );
+      }
       if (value.operator === "between") {
         return (
           <div className="flex flex-col gap-2">
@@ -68,29 +97,77 @@ export default function ConditionRow({
     }
 
     // ✅ ENUM / TEXT IN, NOT_IN → CSV input
-    if (value.operator === "in" || value.operator === "not_in") {
-      return (
-        <select
-          multiple
-          value={value.values ?? []}
-          onChange={(e) => {
-            const selected = Array.from(e.target.selectedOptions).map((o) =>
-              o.value.toLowerCase(),
-            );
+    // src/components/ConditionRow.jsx
 
-            onChange({
-              ...value,
-              values: selected,
-            });
-          }}
-          className="w-full rounded-xl bg-slate-900 px-3 py-2 text-sm text-slate-100"
-        >
-          {options.map((opt) => (
-            <option key={opt} value={String(opt).toLowerCase()}>
-              {opt}
-            </option>
-          ))}
-        </select>
+    // src/components/ConditionRow.jsx
+
+    if (
+      value.operator === "in" ||
+      value.operator === "not_in" ||
+      value.operator === "only" ||
+      value.operator === "not_only"
+    ) {
+      const selected = value.values ?? [];
+      const [open, setOpen] = useState(false);
+      const ref = useRef(null);
+
+      // close on outside click
+      useEffect(() => {
+        function handleClickOutside(e) {
+          if (ref.current && !ref.current.contains(e.target)) {
+            setOpen(false);
+          }
+        }
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () =>
+          document.removeEventListener("mousedown", handleClickOutside);
+      }, []);
+
+      return (
+        <div ref={ref} className="relative">
+          {/* Trigger */}
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="w-full rounded-xl bg-slate-900 px-3 py-2 text-sm text-left text-slate-100 border border-slate-700"
+          >
+            {selected.length ? selected.join(", ") : "Select values…"}
+          </button>
+
+          {/* Dropdown */}
+          {open && (
+            <div className="fixed z-50 mt-1 w-50 max-h-48 overflow-y-auto rounded-xl bg-slate-800 border border-slate-700 shadow-lg">
+              {options.map((opt) => {
+                const v = String(opt).toLowerCase();
+                const checked = selected.includes(v);
+
+                return (
+                  <label
+                    key={v}
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-slate-700 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => {
+                        const next = checked
+                          ? selected.filter((x) => x !== v)
+                          : [...selected, v];
+
+                        onChange({
+                          ...value,
+                          values: next,
+                        });
+                      }}
+                    />
+                    {opt}
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
       );
     }
 
