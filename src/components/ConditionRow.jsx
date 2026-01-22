@@ -7,7 +7,13 @@ import {
 import { dayRange } from "../utils/ateRange.js";
 import DateTimeSelect from "./DateTimeSelect.jsx";
 
-export default function ConditionRow({ operators, value, onChange, onRemove }) {
+export default function ConditionRow({
+  operators,
+  value,
+  options = [],
+  onChange,
+  onRemove,
+}) {
   function renderValueInput() {
     if (value.operator === "empty" || value.operator === "not_empty") {
       return null;
@@ -61,6 +67,34 @@ export default function ConditionRow({ operators, value, onChange, onRemove }) {
       }
     }
 
+    // ✅ ENUM / TEXT IN, NOT_IN → CSV input
+    if (value.operator === "in" || value.operator === "not_in") {
+      return (
+        <select
+          multiple
+          value={value.values ?? []}
+          onChange={(e) => {
+            const selected = Array.from(e.target.selectedOptions).map((o) =>
+              o.value.toLowerCase(),
+            );
+
+            onChange({
+              ...value,
+              values: selected,
+            });
+          }}
+          className="w-full rounded-xl bg-slate-900 px-3 py-2 text-sm text-slate-100"
+        >
+          {options.map((opt) => (
+            <option key={opt} value={String(opt).toLowerCase()}>
+              {opt}
+            </option>
+          ))}
+        </select>
+      );
+    }
+
+    // default single-value input
     return (
       <input
         value={value.values?.[0] ?? ""}

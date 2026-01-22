@@ -463,9 +463,14 @@ export default function TableFilterDropdown({
                 <ConditionRow
                   key={idx}
                   operators={operators}
-                  value={{ ...cond, type: columnType }} // 👈 FIX NAME
+                  value={{ ...cond, type: columnType }}
+                  options={
+                    columnType === "enum" || columnType === "text"
+                      ? universeUniqueValues
+                      : []
+                  }
                   onChange={(v) => {
-                    advancedDirtyRef.current = true; // 👈 THIS is the trigger
+                    advancedDirtyRef.current = true;
                     setConditions((c) => c.map((x, i) => (i === idx ? v : x)));
                   }}
                   onRemove={() => {
@@ -473,6 +478,7 @@ export default function TableFilterDropdown({
                     setConditions((c) => c.filter((_, i) => i !== idx));
                   }}
                 />
+
                 {idx < conditions.length - 1 && (
                   <div className="inline-flex items-center gap-0.5 rounded-full border border-slate-600 bg-slate-800/50 px-1 py-0.5 text-xs">
                     {["AND", "OR"].map((op) => {

@@ -14,6 +14,8 @@ export const OPERATORS = {
   enum: [
     { value: "in", label: "in" },
     { value: "not_in", label: "not in" },
+    { value: "only", label: "only" },
+    { value: "not_only", label: "not only" },
     { value: "contains", label: "contains" },
     { value: "not_contains", label: "does not contain" },
     { value: "equals", label: "equals" },
@@ -64,6 +66,14 @@ export const FILTER_OPERATORS = {
     in: (cell, selected) => selected.some((s) => cell.includes(s)),
 
     not_in: (cell, selected) => selected.every((s) => !cell.includes(s)),
+    only: (cell, selected) => {
+      if (cell.length !== selected.length) return false;
+      return selected.every((s) => cell.includes(s));
+    },
+    not_only: (cell, selected) => {
+      if (cell.length !== selected.length) return true;
+      return !selected.every((s) => cell.includes(s));
+    },
 
     empty: (cell) => cell.length === 0,
     not_empty: (cell) => cell.length > 0,

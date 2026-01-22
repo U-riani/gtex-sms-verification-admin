@@ -43,6 +43,8 @@ export const FILTER_DEFINITION = {
       "not_equals",
       "in",
       "not_in",
+      "only", 
+      "not_only", 
       "empty",
       "not_empty",
     ],
