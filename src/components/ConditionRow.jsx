@@ -2,7 +2,9 @@
 import {
   withStartOfDay,
   withEndOfDay,
+  withDefaultEndOfDay,
 } from "../utils/datePicker.js";
+import { dayRange } from "../utils/ateRange.js";
 import DateTimeSelect from "./DateTimeSelect.jsx";
 
 export default function ConditionRow({ operators, value, onChange, onRemove }) {
@@ -18,13 +20,10 @@ export default function ConditionRow({ operators, value, onChange, onRemove }) {
             {/* FROM (inclusive) */}
             <DateTimeSelect
               value={value.values?.[0] ?? ""}
-              onChange={(iso) =>
+              onChange={(date) =>
                 onChange({
                   ...value,
-                  values: [
-                    withStartOfDay(iso),
-                    value.values?.[1] ?? "",
-                  ],
+                  values: [withStartOfDay(date), value.values?.[1] ?? ""],
                 })
               }
             />
@@ -32,13 +31,10 @@ export default function ConditionRow({ operators, value, onChange, onRemove }) {
             {/* TO (inclusive) */}
             <DateTimeSelect
               value={value.values?.[1] ?? ""}
-              onChange={(iso) =>
+              onChange={(date) =>
                 onChange({
                   ...value,
-                  values: [
-                    value.values?.[0] ?? "",
-                    withEndOfDay(iso),
-                  ],
+                  values: [value.values?.[0] ?? "", withEndOfDay(date)],
                 })
               }
             />
@@ -47,25 +43,28 @@ export default function ConditionRow({ operators, value, onChange, onRemove }) {
       }
 
       // Single-date operators (>, <, =, etc.)
-      return (
-        <DateTimeSelect
-          value={value.values?.[0] ?? ""}
-          onChange={(iso) =>
-            onChange({
-              ...value,
-              values: [iso],
-            })
-          }
-        />
-      );
+      // ON → behaves like day range
+      if (value.operator === "on") {
+        return (
+          <DateTimeSelect
+            value={value.values?.[0] ?? null}
+            onChange={(date) => {
+              const [from, to] = dayRange(date);
+
+              onChange({
+                ...value,
+                values: [from, to],
+              });
+            }}
+          />
+        );
+      }
     }
 
     return (
       <input
         value={value.values?.[0] ?? ""}
-        onChange={(e) =>
-          onChange({ ...value, values: [e.target.value] })
-        }
+        onChange={(e) => onChange({ ...value, values: [e.target.value] })}
         className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm text-slate-100"
         placeholder="Enter value…"
       />
@@ -77,9 +76,7 @@ export default function ConditionRow({ operators, value, onChange, onRemove }) {
       <div className="flex items-center gap-3 border border-slate-500/50 rounded-lg">
         <select
           value={value.operator}
-          onChange={(e) =>
-            onChange({ ...value, operator: e.target.value })
-          }
+          onChange={(e) => onChange({ ...value, operator: e.target.value })}
           className="flex-1 rounded-lg bg-slate-900/90 px-3 py-2 text-sm text-slate-100"
         >
           {operators.map((op) => (

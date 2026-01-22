@@ -24,6 +24,8 @@ export default function TableFilterDropdown({
    * --------------------------- */
   const didInitRef = useRef(false);
   const autoSelectRef = useRef(true);
+  const advancedAutoSelectRef = useRef(false);
+  const advancedDirtyRef = useRef(false);
 
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState([]);
@@ -59,7 +61,6 @@ export default function TableFilterDropdown({
 
   const defaultOperator =
     value?.advanced?.conditions?.[0]?.operator ??
-    value?.quick?.operator ??
     (columnType === "enum"
       ? "in"
       : columnType === "boolean"
@@ -132,7 +133,7 @@ export default function TableFilterDropdown({
       const raw = value.quick.values;
 
       if (columnType === "boolean") {
-        setSelected(raw.map(Boolean));
+        setSelected(raw.filter((v) => v === true || v === false));
       } else {
         const map = new Map(
           universeUniqueValues.map((v) => [String(v).toLowerCase(), v]),
@@ -182,6 +183,9 @@ export default function TableFilterDropdown({
 
   const handleClose = () => {
     didInitRef.current = false;
+    advancedAutoSelectRef.current = false;
+    advancedDirtyRef.current = false;
+
     onClose?.();
   };
 
@@ -224,11 +228,44 @@ export default function TableFilterDropdown({
    * APPLY
    * --------------------------- */
   const apply = () => {
+    // 🧠 BOOLEAN: QUICK ONLY, MODE-BASED
+    if (columnType === "boolean") {
+      let mode = null;
+
+      if (selected.includes(true) && selected.includes(false)) {
+        mode = "not_empty"; // YES + NO
+      } else if (selected.includes(true)) {
+        mode = "yes";
+      } else if (selected.includes(false)) {
+        mode = "no";
+      } else {
+        mode = "empty";
+      }
+
+      onChange({
+        type: "boolean",
+        quick: { mode },
+      });
+
+      onClose?.();
+      return;
+    }
+
+    /* ---------- existing non-boolean logic untouched ---------- */
+
     let quick = undefined;
     let advanced = undefined;
+    console.log("selected in apply: ", selected);
 
-    // 1️⃣ ALWAYS apply quick filter if selection is partial
-    if (selected.length && selected.length !== universeUniqueValues.length) {
+    if (selected.length === 0) {
+      quick = {
+        operator: "equals",
+        values: ["__NO_MATCH__"],
+      };
+    }
+
+    // 2️⃣ Partial selection → normal quick filter
+    else if (selected.length !== universeUniqueValues.length) {
       quick = {
         operator: "equals",
         values: normalizeValues(selected),
@@ -256,16 +293,20 @@ export default function TableFilterDropdown({
 
     onChange(payload);
     didInitRef.current = false;
+    advancedAutoSelectRef.current = false;
+    autoSelectRef.current = false;
+    advancedDirtyRef.current = false;
     onClose?.();
   };
 
   useEffect(() => {
     if (!advancedOpen) return;
+    if (!advancedDirtyRef.current) return;
 
-    // Advanced filter redefines universe → auto-select all
     setSelected(contextUniqueValues);
     autoSelectRef.current = true;
-  }, [contextUniqueValues, advancedOpen]);
+    advancedAutoSelectRef.current = true;
+  }, [conditions, contextUniqueValues, advancedOpen]);
 
   /* ---------------------------
    * POSITIONING
@@ -328,10 +369,16 @@ export default function TableFilterDropdown({
   }, [value]);
 
   useEffect(() => {
+    // If selection came from advanced auto-select, allow context sync
+    if (advancedAutoSelectRef.current) return;
+
+    // If quick filter exists, it is the source of truth
+    if (value?.quick?.values?.length) return;
+
     if (autoSelectRef.current) return;
 
     setSelected((prev) => prev.filter((v) => contextUniqueValues.includes(v)));
-  }, [contextUniqueValues]);
+  }, [contextUniqueValues, value]);
 
   /* ---------------------------
    * RENDER
@@ -358,13 +405,15 @@ export default function TableFilterDropdown({
           ))}
         </select> */}
 
-        <button
-          onClick={() => setAdvancedOpen((v) => !v)}
-          className="px-2 text-white/70 bg-slate-700 rounded hover:bg-slate-600 cursor-pointer"
-          title="Advanced"
-        >
-          ➤
-        </button>
+        {columnType !== "boolean" && (
+          <button
+            onClick={() => setAdvancedOpen((v) => !v)}
+            className="px-2 text-white/70 bg-slate-700 rounded hover:bg-slate-600 cursor-pointer"
+            title="Advanced"
+          >
+            ➤
+          </button>
+        )}
       </div>
 
       <input
@@ -415,15 +464,14 @@ export default function TableFilterDropdown({
                   key={idx}
                   operators={operators}
                   value={{ ...cond, type: columnType }} // 👈 FIX NAME
-                  onChange={(v) =>
-                    setConditions((c) => c.map((x, i) => (i === idx ? v : x)))
-                  }
-                  onRemove={
-                    idx > 0
-                      ? () =>
-                          setConditions((c) => c.filter((_, i) => i !== idx))
-                      : undefined
-                  }
+                  onChange={(v) => {
+                    advancedDirtyRef.current = true; // 👈 THIS is the trigger
+                    setConditions((c) => c.map((x, i) => (i === idx ? v : x)));
+                  }}
+                  onRemove={() => {
+                    advancedDirtyRef.current = true;
+                    setConditions((c) => c.filter((_, i) => i !== idx));
+                  }}
                 />
                 {idx < conditions.length - 1 && (
                   <div className="inline-flex items-center gap-0.5 rounded-full border border-slate-600 bg-slate-800/50 px-1 py-0.5 text-xs">
@@ -457,12 +505,13 @@ export default function TableFilterDropdown({
             ))}
             {/* ADD CONDITION */}
             <button
-              onClick={() =>
+              onClick={() => {
+                advancedDirtyRef.current = true;
                 setConditions((c) => [
                   ...c,
                   { operator: defaultOperator, values: [], logic: "AND" },
-                ])
-              }
+                ]);
+              }}
               className="w-full text-slate-100/60 text-xs bg-slate-700 hover:bg-slate-600 rounded py-1"
             >
               + Add condition

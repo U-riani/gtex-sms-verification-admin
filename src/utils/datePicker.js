@@ -14,12 +14,32 @@ console.log("+++")
   return value;
 };
 
+// export function withStartOfDay(date) {
+//   if (!date) return "";
+//   return date.replace(/T.*/, "T00:00:00");
+// }
+
+// export function withEndOfDay(date) {
+//   if (!date) return "";
+//   return date.replace(/T.*/, "T23:59:59");
+// }
+
 export function withStartOfDay(date) {
-  if (!date) return "";
-  return date.replace(/T.*/, "T00:00:00");
+  if (!(date instanceof Date)) return null;
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    0, 0, 0
+  );
 }
 
 export function withEndOfDay(date) {
-  if (!date) return "";
-  return date.replace(/T.*/, "T23:59:59");
+  if (!(date instanceof Date)) return null;
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    23, 59, 59
+  );
 }

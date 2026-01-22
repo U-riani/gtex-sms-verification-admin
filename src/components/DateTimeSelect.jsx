@@ -30,7 +30,7 @@ export default function DateTimeSelect({ value, onChange, withTime = false }) {
   useEffect(() => {
     if (!value) return;
 
-    const d = new Date(value);
+    const d = value instanceof Date ? value : new Date(value);
     if (isNaN(d)) return;
 
     setYear(String(d.getFullYear()));
@@ -40,6 +40,20 @@ export default function DateTimeSelect({ value, onChange, withTime = false }) {
       `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`,
     );
   }, [value]);
+
+  // useEffect(() => {
+  //   if (!value) return;
+
+  //   const d = value instanceof Date ? value : new Date(value);
+  //   if (isNaN(d)) return;
+
+  //   setYear(String(d.getFullYear()));
+  //   setMonth(String(d.getMonth() + 1));
+  //   setDay(String(d.getDate()));
+  //   setTime(
+  //     `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`,
+  //   );
+  // }, [value]);
 
   /* -----------------------------
    * YEARS
@@ -60,30 +74,46 @@ export default function DateTimeSelect({ value, onChange, withTime = false }) {
   /* -----------------------------
    * EMIT ISO (ONLY WHEN COMPLETE)
    * ----------------------------- */
+  /* -----------------------------
+   * EMIT DATE OBJECT (ONLY WHEN COMPLETE)
+   * ----------------------------- */
   useEffect(() => {
+    if (!year) {
+      onChange(null);
+      return;
+    }
+
     // YEAR only
     if (year && !month && !day) {
-      onChange(year);
+      onChange(new Date(Number(year), 0, 1));
       return;
     }
 
     // YEAR + MONTH
     if (year && month && !day) {
-      onChange(`${year}-${pad(month)}`);
+      onChange(new Date(Number(year), Number(month) - 1, 1));
       return;
     }
 
     // FULL DATE
     if (year && month && day) {
-      const iso = `${year}-${pad(month)}-${pad(day)}T${
-        withTime ? time : "00:00:00"
-      }`;
-      onChange(iso);
+      const [hh, mm, ss] = time.split(":").map(Number);
+
+      const d = new Date(
+        Number(year),
+        Number(month) - 1,
+        Number(day),
+        withTime ? hh : 0,
+        withTime ? mm : 0,
+        withTime ? ss : 0,
+      );
+
+      onChange(d);
     }
-  }, [year, month, day, time]);
+  }, [year, month, day, time, withTime]);
 
   return (
-    <div className="flex gap-2 items-center">
+    <div className="flex gap-2 items-center justify-between text-slate-500">
       {/* YEAR */}
       <select
         value={year}

@@ -70,11 +70,14 @@ export const FILTER_OPERATORS = {
   },
 
   date: {
-    on: (cell, selected) => cell[0] === selected[0],
-    before: (cell, selected) => cell[0] < selected[0],
-    after: (cell, selected) => cell[0] > selected[0],
-    between: (cell, selected) =>
-      cell[0] >= selected[0] && cell[0] <= selected[1],
+    on: (cell, [from, to]) => cell.some((v) => v >= from && v < to),
+    equals: (cell, selected) => selected.some((s) => cell.includes(s)),
+
+    before: (cell, [d]) => cell.some((v) => v < d),
+
+    after: (cell, [d]) => cell.some((v) => v > d),
+
+    between: (cell, [from, to]) => cell.some((v) => v >= from && v <= to),
 
     empty: (cell) => cell.length === 0 || Number.isNaN(cell[0]),
     not_empty: (cell) => cell.length > 0 && !Number.isNaN(cell[0]),
