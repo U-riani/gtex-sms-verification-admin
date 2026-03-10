@@ -1,7 +1,7 @@
 // src/api/adminClient.js
-// const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 // const API_BASE = "https://gtex-sms-verification-server.vercel.app/api";
-const API_BASE = "https://gtex-sms-verification-server-git-v4-u-rianis-projects.vercel.app/api";
+// const API_BASE = "https://gtex-sms-verification-server-git-v4-u-rianis-projects.vercel.app/api";
 
 export async function adminFetch(path, options = {}) {
   const token = localStorage.getItem("adminToken");

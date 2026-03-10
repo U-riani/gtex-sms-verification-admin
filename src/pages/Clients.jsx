@@ -138,6 +138,7 @@ export default function Clients() {
     "lastName",
     "email",
     "phone",
+    "branch",
     "city",
     "country",
     "gender",
@@ -206,6 +207,14 @@ export default function Clients() {
       sortable: true,
       filterable: true,
       render: (u) => highlightMatch(u.lastName, quickSearch),
+    },
+    {
+      key: "branch",
+      label: "Branch",
+      type: "text",
+      sortable: true,
+      filterable: true,
+      render: (u) => highlightMatch(u.branch, quickSearch),
     },
     {
       key: "email",

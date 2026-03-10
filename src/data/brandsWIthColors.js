@@ -1,3 +1,5 @@
+// src/data/brandsWithColors.js
+
 export const brandsWithColor = {
   "Terranova": {bg: "bg-slate-900/60", text: "text-slate-100"},
   "English Home" :  {bg: "bg-gray-700/40", text: "text-slate-100"},

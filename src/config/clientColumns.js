@@ -1,3 +1,4 @@
+// src/config/clientColumns.js
 import { highlightMatch } from "../utils/highlightMatch";
 
 export const clientColumns = ({ highlight } = {}) => [

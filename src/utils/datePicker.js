@@ -28,7 +28,7 @@ console.log("+++")
 export function withStartOfDay(date) {
   if (!(date instanceof Date)) return null;
   return new Date(
-    date.getFullYear(),
+    date.getFullYear(), 
     date.getMonth(),
     date.getDate(),
     0, 0, 0
