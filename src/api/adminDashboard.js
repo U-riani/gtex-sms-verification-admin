@@ -2,5 +2,5 @@
 import { adminFetch } from "./adminClient";
 
 export function getDashboardStats() {
-  return adminFetch("/admin/dashboard");
+  return adminFetch("/admin/dashboard/");
 }
