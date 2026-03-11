@@ -16,7 +16,8 @@ export async function adminFetch(path, options = {}) {
   });
 
   const data = await res.json();
-
+  console.log("backend url:", API_BASE)
+  console.log("path url:", path)
   if (!res.ok) {
     if (res.status === 401) {
       localStorage.removeItem("adminToken");
