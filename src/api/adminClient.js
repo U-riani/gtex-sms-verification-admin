@@ -5,6 +5,8 @@ const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 export async function adminFetch(path, options = {}) {
   const token = localStorage.getItem("adminToken");
+  console.log("backend url:", API_BASE)
+  console.log("path url:", path)
 
   const res = await fetch(API_BASE + path, {
     headers: {
@@ -16,8 +18,6 @@ export async function adminFetch(path, options = {}) {
   });
 
   const data = await res.json();
-  console.log("backend url:", API_BASE)
-  console.log("path url:", path)
   if (!res.ok) {
     if (res.status === 401) {
       localStorage.removeItem("adminToken");
