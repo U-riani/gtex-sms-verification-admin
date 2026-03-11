@@ -9,29 +9,29 @@ export function getSmsTemplates({ q, brand } = {}) {
   if (brand) params.set("brand", brand);
 
   const qs = params.toString();
-  return adminFetch(`/admin/sms/templates${qs ? `?${qs}` : ""}`);
+  return adminFetch(`/admin/templates${qs ? `?${qs}` : ""}`);
 }
 
 export function getSmsTemplateById(id) {
-  return adminFetch(`/admin/sms/templates/${id}`);
+  return adminFetch(`/admin/templates/${id}`);
 }
 
 export function createSmsTemplate(payload) {
-  return adminFetch("/admin/sms/templates", {
+  return adminFetch("/admin/templates", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
 export function updateSmsTemplate(id, payload) {
-  return adminFetch(`/admin/sms/templates/${id}`, {
+  return adminFetch(`/admin/templates/${id}`, {
     method: "PUT",
     body: JSON.stringify(payload),
   });
 }
 
 export function deleteSmsTemplate(id) {
-  return adminFetch(`/admin/sms/templates/${id}`, {
+  return adminFetch(`/admin/templates/${id}`, {
     method: "DELETE",
   });
 }

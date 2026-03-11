@@ -24,14 +24,14 @@ export function getSmsHistory({
   params.set("page", page);
   params.set("limit", limit);
 
-  return adminFetch(`/admin/sms/history?${params.toString()}`);
+  return adminFetch(`/admin/history?${params.toString()}`);
 }
 
 /**
  * Retry failed SMS by history IDs
  */
 export function retryFailedSms(historyIds) {
-  return adminFetch("/admin/sms/history/retry", {
+  return adminFetch("/admin/history/retry", {
     method: "POST",
     body: JSON.stringify({ ids: historyIds }),
   });
@@ -46,7 +46,7 @@ export function exportSmsHistoryCsv(filters = {}) {
   const token = localStorage.getItem("adminToken");
   const url = `${
     import.meta.env.VITE_API_URL || "http://localhost:5000/api"
-  }/admin/sms/history/export?${params.toString()}`;
+  }/admin/history/export?${params.toString()}`;
 
   // classic download, no fetch nonsense
   const a = document.createElement("a");
