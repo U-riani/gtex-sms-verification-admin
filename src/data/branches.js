@@ -129,4 +129,9 @@ export const branches = [
     name: "English Home City Mall",
     brand: "English Home",
   },
+  {
+    id: 33,
+    name: "Penti AgroHub",
+    brand: "Penti",
+  },
 ];
